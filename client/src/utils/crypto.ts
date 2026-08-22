@@ -1,30 +1,27 @@
-// Basic JWT decoder without verification (verification is server-side)
-export const decodeJwt = (token: string) => {
-  try {
-    const base64Url = token.split('.')[1];
-    const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
-    const jsonPayload = decodeURIComponent(
-      window
-        .atob(base64)
-        .split('')
-        .map((c) => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
-        .join('')
-    );
-    return JSON.parse(jsonPayload);
-  } catch (e) {
-    return null;
-  }
-};
+// =============================================================================
+// MedVault — Crypto Utilities
+//
+// Shared utility functions for cryptographic operations.
+// Implemented natively using the Web Crypto API to avoid external dependencies.
+// =============================================================================
 
-export const isTokenExpired = (token: string): boolean => {
-  const decoded = decodeJwt(token);
-  if (!decoded || !decoded.exp) return true;
-  // Check if expiration time is before current time
-  return decoded.exp * 1000 < Date.now();
-};
-
-// TODO (Workstream 2): Implement DelegationChain serialization here
-export const serializeDelegationChain = (chain: any): string => {
-  // Placeholder for Workstream 2 where @dfinity/identity is available
-  return JSON.stringify(chain);
-};
+/**
+ * Generates a SHA-256 hash of a file for integrity verification.
+ * This is used to ensure that a medical record has not been tampered with
+ * after decryption.
+ *
+ * @param file The file to hash
+ * @returns A hex-encoded SHA-256 string
+ */
+export async function generateFileHash(file: File | Blob): Promise<string> {
+  const buffer = await file.arrayBuffer();
+  
+  // Hash the buffer natively using the Web Crypto API
+  const hashBuffer = await crypto.subtle.digest('SHA-256', buffer);
+  
+  // Convert the ArrayBuffer to a hex string
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  const hexString = hashArray.map((b) => b.toString(16).padStart(2, '0')).join('');
+  
+  return hexString;
+}
