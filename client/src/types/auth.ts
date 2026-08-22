@@ -1,44 +1,37 @@
-import { Identity } from '@dfinity/agent';
-import { Principal } from '@dfinity/principal';
+export type UserRole = 'patient' | 'doctor' | 'admin';
 
-export type UserRole = 'patient' | 'doctor' | 'emergency';
-export type AuthProvider = 'nfid' | 'internet_identity';
-
-export interface NFIDConfig {
-  appName: string;
-  appLogo: string;
-  providerUrl: string;
-  derivationOrigin?: string;
-  maxTimeToLive: bigint;
-  windowOpenerFeatures?: string;
-  targets?: string[];
-}
-
-// TODO (Workstream 1): BLANK SPACE - Type Sync
-// Workstream 1 must verify this `UserProfile` matches the final Azle backend Candid type definition.
 export interface UserProfile {
-  id: string; // The principal ID as a string
+  id: string;
+  principal: string;
   role: UserRole;
-  name: string;
-  abhaId?: string; // Optional for doctors, required for patients
-  createdAt: bigint;
-  updatedAt: bigint;
+  displayName: string;
+  email?: string;
+  abhaId?: string;
+  abhaLinked: boolean;
+  avatarUrl?: string;
+  createdAt: number;
+  updatedAt: number;
 }
 
 export interface AuthState {
-  identity: Identity | null;
-  principal: Principal | null;
-  principalText: string | null;
   isAuthenticated: boolean;
   isLoading: boolean;
+  user: UserProfile | null;
+  token: string | null;     // JWT token
+  principal: string | null;
   role: UserRole | null;
   error: string | null;
-  profile: UserProfile | null;
 }
 
-export interface LoginOptions {
-  provider?: AuthProvider;
-  customTTL?: bigint;
-  onSuccess?: (identity: Identity) => void;
-  onError?: (error: Error) => void;
+export interface LoginResponse {
+  token: string;
+  user: UserProfile;
+}
+
+export interface DelegationChain {
+  delegations: Array<{
+    delegation: { pubkey: Uint8Array; expiration: bigint; targets?: string[] };
+    signature: Uint8Array;
+  }>;
+  publicKey: Uint8Array;
 }

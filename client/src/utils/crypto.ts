@@ -1,19 +1,30 @@
-/**
- * Generates a SHA-256 hash for a given file Blob.
- * Used for verifying file integrity before/after Lit Protocol encryption.
- */
-export const generateFileHash = async (file: Blob): Promise<string> => {
-  const arrayBuffer = await file.arrayBuffer();
-  const hashBuffer = await crypto.subtle.digest('SHA-256', arrayBuffer);
-  
-  // Convert buffer to byte array, then to hex string
-  const hashArray = Array.from(new Uint8Array(hashBuffer));
-  const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-  
-  return hashHex;
+// Basic JWT decoder without verification (verification is server-side)
+export const decodeJwt = (token: string) => {
+  try {
+    const base64Url = token.split('.')[1];
+    const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+    const jsonPayload = decodeURIComponent(
+      window
+        .atob(base64)
+        .split('')
+        .map((c) => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
+        .join('')
+    );
+    return JSON.parse(jsonPayload);
+  } catch (e) {
+    return null;
+  }
 };
 
-// TODO (Workstream 3): BLANK SPACE - Hash Integration
-// Workstream 3, you should call `generateFileHash` inside your TanStack `useUploadRecord` hook
-// immediately BEFORE you pass the file to `lit.ts` for encryption. Save this hash in the 
-// recordStore, and then pass it to the Azle backend so it can be verified on download.
+export const isTokenExpired = (token: string): boolean => {
+  const decoded = decodeJwt(token);
+  if (!decoded || !decoded.exp) return true;
+  // Check if expiration time is before current time
+  return decoded.exp * 1000 < Date.now();
+};
+
+// TODO (Workstream 2): Implement DelegationChain serialization here
+export const serializeDelegationChain = (chain: any): string => {
+  // Placeholder for Workstream 2 where @dfinity/identity is available
+  return JSON.stringify(chain);
+};

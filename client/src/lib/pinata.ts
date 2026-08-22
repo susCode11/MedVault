@@ -1,18 +1,21 @@
 import { PinataSDK } from 'pinata';
 
 // TODO (Workstream 4): BLANK SPACE - Environment Variables
-// You must ensure that VITE_PINATA_JWT and VITE_PINATA_GATEWAY are added to your local .env file.
-// We are using fallback mock values here so the app doesn't crash during your UI development.
+// Replace these mock values with real credentials from the Pinata dashboard.
+// Generate a JWT and Gateway URL at https://app.pinata.cloud/developers/api-keys
+// Then add them to client/.env.local as VITE_PINATA_JWT and VITE_PINATA_GATEWAY.
 const pinataJwt = process.env.VITE_PINATA_JWT || 'mock-jwt';
 const pinataGateway = process.env.VITE_PINATA_GATEWAY || 'mock-gateway.mypinata.cloud';
+
+// --- Singleton SDK Instance ---
 
 let pinataInstance: PinataSDK | null = null;
 
 /**
- * Initializes and returns the PinataSDK instance.
- * Uses a singleton pattern to avoid multiple SDK initializations.
+ * Returns the singleton PinataSDK instance.
+ * Initializes on first call with the configured JWT and gateway.
  */
-export const getPinata = () => {
+export function getPinata(): PinataSDK {
   if (!pinataInstance) {
     pinataInstance = new PinataSDK({
       pinataJwt,
@@ -20,62 +23,86 @@ export const getPinata = () => {
     });
   }
   return pinataInstance;
-};
+}
+
+// --- Upload ---
+
+export interface UploadMetadata {
+  ownerPrincipal: string;
+  recordType?: string;
+  fileName?: string;
+  [key: string]: string | undefined;
+}
 
 /**
- * Uploads an encrypted Blob to IPFS via Pinata.
- * @param blob The encrypted file blob
- * @param metadata Metadata describing the file (e.g., owner, original name)
- * @returns The IPFS CID of the uploaded file
+ * Uploads an encrypted blob to IPFS via Pinata.
+ * Converts the blob to a File, attaches searchable metadata, and returns the CID.
+ *
+ * @param blob - The encrypted file data as a Blob
+ * @param metadata - Searchable metadata (owner principal, record type, etc.)
+ * @returns The IPFS CID string for the uploaded file
+ *
+ * // TODO (Workstream 3): Import and call this function from your useUploadRecord
+ * // TanStack Query mutation hook. Example:
+ * //   const cid = await uploadEncryptedBlob(encryptedBlob, {
+ * //     ownerPrincipal: user.principal,
+ * //     recordType: 'lab_report',
+ * //     fileName: file.name,
+ * //   });
  */
-export const uploadEncryptedBlob = async (blob: Blob, metadata: any): Promise<string> => {
+export async function uploadEncryptedBlob(
+  blob: Blob,
+  metadata: UploadMetadata
+): Promise<string> {
   const pinata = getPinata();
 
-  // Create a File object from the Blob for uploading
-  const file = new File([blob], metadata.name || 'encrypted_record.enc', { type: blob.type });
+  // Convert Blob to File (Pinata SDK expects a File object)
+  const file = new File(
+    [blob],
+    metadata.fileName || `medvault-record-${Date.now()}.enc`,
+    { type: blob.type || 'application/octet-stream' }
+  );
 
-  try {
-    console.log('[Pinata] Uploading file to IPFS...', metadata);
-    
-    // TODO (Workstream 3): BLANK SPACE - Upload Progress Tracking
-    // If your UI requires a progress bar for large medical records, you will need to 
-    // integrate Axios or another HTTP client directly, as the basic PinataSDK upload 
-    // method might not expose progress events. Handle that state via your Zustand store here.
-
-    const upload = await pinata.upload.file(file).addMetadata({
-      name: metadata.name,
-      keyvalues: {
-        owner: metadata.ownerPrincipal,
-        timestamp: Date.now().toString(),
-      }
-    });
-
-    // Handle v1 SDK return type dynamically for the scaffolding
-    return (upload as any).IpfsHash || (upload as any).cid || 'mock-cid-123';
-  } catch (error) {
-    console.error('Pinata upload failed:', error);
-    throw new Error('Failed to upload file to IPFS');
+  // Build key-value pairs for Pinata metadata (filter out undefined values)
+  const keyvalues: Record<string, string> = {};
+  for (const [key, value] of Object.entries(metadata)) {
+    if (value !== undefined) {
+      keyvalues[key] = value;
+    }
   }
-};
+
+  const result = await pinata.upload.file(file).addMetadata({
+    name: metadata.fileName || `medvault-${Date.now()}`,
+    keyvalues,
+  });
+
+  return result.IpfsHash;
+}
+
+// --- Fetch ---
 
 /**
- * Fetches data from IPFS via the Pinata Gateway.
- * @param cid The IPFS CID of the file to fetch
- * @returns The fetched Blob
+ * Downloads a file from IPFS by its CID using the configured Pinata gateway.
+ * Returns the file contents as a Blob.
+ *
+ * @param cid - The IPFS CID to fetch
+ * @returns The file data as a Blob
+ *
+ * // TODO (Workstream 3): Import and call this function from your useRecords /
+ * // useDownloadRecord TanStack Query hook. Example:
+ * //   const blob = await fetchFromIPFS(record.ipfsCid);
+ * //   const decryptedBlob = await decryptBlob(blob, encryptionKey);
  */
-export const fetchFromIPFS = async (cid: string): Promise<Blob> => {
-  try {
-    console.log(`[Pinata] Fetching CID ${cid} from IPFS...`);
-    const gatewayUrl = `https://${pinataGateway}/ipfs/${cid}`;
-    
-    const response = await fetch(gatewayUrl);
-    if (!response.ok) {
-      throw new Error(`Failed to fetch from IPFS: ${response.statusText}`);
-    }
+export async function fetchFromIPFS(cid: string): Promise<Blob> {
+  const gateway = pinataGateway.startsWith('https://')
+    ? pinataGateway
+    : `https://${pinataGateway}`;
 
-    return await response.blob();
-  } catch (error) {
-    console.error('Failed to fetch from Pinata:', error);
-    throw new Error(`Failed to fetch CID ${cid}`);
+  const response = await fetch(`${gateway}/ipfs/${cid}`);
+
+  if (!response.ok) {
+    throw new Error(`Failed to fetch from IPFS: ${response.status} ${response.statusText}`);
   }
-};
+
+  return response.blob();
+}

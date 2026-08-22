@@ -1,14 +1,27 @@
-// TODO (Workstream 1): BLANK SPACE - Type Sync
-// Workstream 1 must verify this `AccessGrant` matches the final Azle backend Candid type definition.
-
-export type AccessStatus = 'pending' | 'approved' | 'revoked' | 'expired';
+export type AccessStatus = 'pending' | 'granted' | 'denied' | 'expired' | 'revoked';
+export type AccessType = 'read' | 'write' | 'emergency';
 
 export interface AccessGrant {
-  id: string; // UUID
-  patientId: string; // Principal string
-  doctorId: string; // Principal string
-  recordIds: string[]; // List of specific record IDs granted (or empty if all)
-  grantedAt: bigint; // Unix timestamp
-  expiresAt: bigint | null; // Null if permanent until revoked
+  id: string;
+  patientId: string;
+  doctorId: string;
+  doctorName: string;
+  patientName: string;
+  recordIds: string[];     // [] = all records
+  accessType: AccessType;
   status: AccessStatus;
+  reason: string;
+  grantedAt?: number;
+  expiresAt?: number;
+  revokedAt?: number;
+  createdAt: number;
+}
+
+export interface AccessRequest {
+  doctorId: string;
+  patientId: string;
+  recordIds: string[];
+  accessType: AccessType;
+  reason: string;
+  durationHours: number;
 }

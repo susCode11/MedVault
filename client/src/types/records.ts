@@ -1,17 +1,36 @@
-// TODO (Workstream 1): BLANK SPACE - Type Sync
-// Workstream 1 must verify this `MedicalRecord` matches the final Azle backend Candid type definition.
-
-export type RecordCategory = 'prescription' | 'lab_report' | 'scan' | 'clinical_note' | 'other';
+export type RecordCategory = 'lab_report' | 'prescription' | 'imaging' | 'discharge_summary' | 'vaccination' | 'consultation' | 'other';
+export type RecordStatus = 'active' | 'archived' | 'pending';
 
 export interface MedicalRecord {
-  id: string; // UUID
-  patientId: string; // Patient Principal string
-  uploaderId: string; // Principal string (can be patient or doctor)
-  category: RecordCategory;
+  id: string;
+  patientId: string;
+  doctorId?: string;
   title: string;
   description: string;
-  ipfsCid: string; // Location of the encrypted blob on IPFS
-  encryptionHash: string; // Hash used by Lit Protocol
-  createdAt: bigint; // Unix timestamp in nanoseconds
-  size: bigint; // File size in bytes
+  category: RecordCategory;
+  status: RecordStatus;
+  ipfsCid: string;
+  encryptedSymKey: string;
+  fileName: string;
+  fileSize: number;
+  mimeType: string;
+  hospital?: string;
+  tags: string[];
+  createdAt: number;
+  updatedAt: number;
+}
+
+export interface RecordFilter {
+  category?: RecordCategory;
+  status?: RecordStatus;
+  search?: string;
+  dateFrom?: number;
+  dateTo?: number;
+  tags?: string[];
+}
+
+export interface UploadProgress {
+  stage: 'encrypting' | 'uploading' | 'registering' | 'complete' | 'error';
+  percent: number;
+  message: string;
 }

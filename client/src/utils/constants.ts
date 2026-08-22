@@ -1,29 +1,25 @@
-export const APP_NAME = 'MedVault';
+export const CONSTANTS = {
+  APP_NAME: 'MedVault',
+  VERSION: '0.1.0',
+  API_BASE: '/api/v1',
+  MOCK_DELAY_MS: 500, // delay for mock api
+  
+  ROLES: {
+    PATIENT: 'patient',
+    DOCTOR: 'doctor',
+    ADMIN: 'admin',
+  },
 
-export const ROLES = {
-  PATIENT: 'patient',
-  DOCTOR: 'doctor',
-  EMERGENCY: 'emergency',
-} as const;
+  RECORD_CATEGORIES: [
+    { id: 'lab_report', label: 'Lab Report', color: 'primary' },
+    { id: 'prescription', label: 'Prescription', color: 'accent' },
+    { id: 'imaging', label: 'Imaging/Scan', color: 'info' },
+    { id: 'discharge_summary', label: 'Discharge Summary', color: 'warning' },
+    { id: 'vaccination', label: 'Vaccination', color: 'success' },
+    { id: 'consultation', label: 'Consultation Note', color: 'primary' },
+    { id: 'other', label: 'Other', color: 'surface-border' },
+  ] as const,
 
-export const RECORD_CATEGORIES = {
-  PRESCRIPTION: 'prescription',
-  LAB_REPORT: 'lab_report',
-  SCAN: 'scan',
-  CLINICAL_NOTE: 'clinical_note',
-  OTHER: 'other',
-} as const;
-
-export const MAX_FILE_SIZE_BYTES = 50 * 1024 * 1024; // 50MB
-
-export const MESSAGES = {
-  UPLOAD_SUCCESS: 'Record uploaded and encrypted successfully.',
-  UPLOAD_ERROR: 'Failed to upload record. Please try again.',
-  DECRYPT_ERROR: 'You do not have permission to decrypt this record.',
-  ABHA_VERIFY_SUCCESS: 'ABHA ID verified successfully.',
-  ABHA_VERIFY_ERROR: 'Invalid ABHA ID format or not found.',
+  MAX_FILE_SIZE_MB: 10,
+  SUPPORTED_FILE_TYPES: ['application/pdf', 'image/jpeg', 'image/png'],
 };
-
-// TODO (Workstream 4): BLANK SPACE - Theme Config
-// Workstream 4 can add standard UI theme constants here if they don't want to rely 
-// entirely on tailwind.config.js for programmatic color references (e.g. for canvas graphs).

@@ -1,23 +1,24 @@
-// TODO (Workstream 1): BLANK SPACE - Type Sync
-// Workstream 1 must verify these types match the final Azle backend Candid type definitions.
-
 export interface EmergencyAccessEvent {
-  id: string; // UUID
-  patientId: string; // Principal string
-  doctorId: string; // Principal string
+  id: string;
+  doctorId: string;
+  doctorName: string;
+  patientId: string;
+  patientName: string;
   reason: string;
-  timestamp: bigint; // Unix timestamp
-  ipAddress?: string; // Optional metadata
+  justification: string;
+  recordsAccessed: string[];
+  accessedAt: number;
+  expiresAt: number;
+  reported: boolean;
+  reportId?: string;
 }
 
-export type AbuseStatus = 'pending_review' | 'dismissed' | 'action_taken';
-
 export interface AbuseReport {
-  id: string; // UUID
-  eventId: string; // References the EmergencyAccessEvent ID
-  patientId: string;
-  doctorId: string;
-  description: string;
-  reportedAt: bigint;
-  status: AbuseStatus;
+  id: string;
+  emergencyEventId: string;
+  reportedBy: string;
+  reportedAt: number;
+  reason: string;
+  status: 'open' | 'investigating' | 'resolved' | 'dismissed';
+  resolution?: string;
 }

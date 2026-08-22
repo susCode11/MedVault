@@ -1,52 +1,32 @@
-/**
- * Formats a Unix timestamp (in milliseconds or nanoseconds) to a readable date.
- * Assumes Azle backend passes nanoseconds, so it divides by 1,000,000 if necessary.
- */
-export const formatDate = (timestamp: bigint | number | string): string => {
-  let ms = Number(timestamp);
-  
-  // If the timestamp is way too large, it's likely in nanoseconds (Azle default)
-  if (ms > 1e13) {
-    ms = Math.floor(ms / 1_000_000);
-  }
+import { format, formatDistanceToNow } from 'date-fns';
 
-  return new Intl.DateTimeFormat('en-US', {
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  }).format(new Date(ms));
+export const formatDate = (date: number | Date | string, pattern = 'MMM d, yyyy') => {
+  if (!date) return '';
+  return format(new Date(date), pattern);
 };
 
-/**
- * Truncates an ICP Principal for UI display (e.g., 'r7inp...-cai').
- */
-export const truncatePrincipal = (principal: string): string => {
-  if (principal.length <= 15) return principal;
-  return `${principal.slice(0, 5)}...${principal.slice(-5)}`;
+export const formatRelativeTime = (date: number | Date | string) => {
+  if (!date) return '';
+  return formatDistanceToNow(new Date(date), { addSuffix: true });
 };
 
-/**
- * Converts bytes into a human-readable string (KB, MB, etc.)
- */
-export const formatBytes = (bytes: number | bigint, decimals = 2): string => {
-  const numBytes = Number(bytes);
-  if (!+numBytes) return '0 Bytes';
-
+export const formatFileSize = (bytes: number): string => {
+  if (bytes === 0) return '0 Bytes';
   const k = 1024;
-  const dm = decimals < 0 ? 0 : decimals;
-  const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB'];
-
-  const i = Math.floor(Math.log(numBytes) / Math.log(k));
-
-  return `${parseFloat((numBytes / Math.pow(k, i)).toFixed(dm))} ${sizes[i]}`;
+  const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
 };
 
-// Formats a record category into a display-friendly string
-export const formatCategory = (category: string): string => {
-  return category
-    .split('_')
-    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-    .join(' ');
+export const truncatePrincipal = (principal: string, length = 6): string => {
+  if (!principal) return '';
+  if (principal.length <= length * 2) return principal;
+  return `${principal.substring(0, length)}...${principal.substring(principal.length - length)}`;
+};
+
+export const formatAbhaId = (abhaId: string): string => {
+  if (!abhaId) return '';
+  const cleaned = abhaId.replace(/[^0-9]/g, '');
+  if (cleaned.length !== 14) return abhaId;
+  return `${cleaned.substring(0, 2)}-${cleaned.substring(2, 6)}-${cleaned.substring(6, 10)}-${cleaned.substring(10)}`;
 };

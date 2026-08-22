@@ -1,94 +1,79 @@
 import { create } from 'zustand';
-import { AuthState, UserRole, LoginOptions } from '../types/auth';
-import { initNFID, login, logout, isAuthenticated } from '../lib/nfid';
-import { recreateAgent } from '../lib/agent';
-import { recreateActor } from '../lib/canister';
+import { persist } from 'zustand/middleware';
+import { AuthState, UserProfile, UserRole } from '../types/auth';
+import { api } from '../lib/api';
 
 interface AuthStore extends AuthState {
-  initialize: () => Promise<void>;
-  loginWithNFID: (options?: LoginOptions) => Promise<void>;
-  logout: () => Promise<void>;
+  login: (principal: string) => Promise<void>;
+  logout: () => void;
   setRole: (role: UserRole) => void;
-  // TODO (Workstream - User Profiles): Add setProfile action
+  updateProfile: (updates: Partial<UserProfile>) => void;
 }
 
-export const useAuthStore = create<AuthStore>((set) => ({
-  identity: null,
-  principal: null,
-  principalText: null,
-  isAuthenticated: false,
-  isLoading: true,
-  role: null,
-  error: null,
-  profile: null,
+export const useAuthStore = create<AuthStore>()(
+  persist(
+    (set, get) => ({
+      isAuthenticated: false,
+      isLoading: false,
+      user: null,
+      token: null,
+      principal: null,
+      role: null,
+      error: null,
 
-  initialize: async () => {
-    set({ isLoading: true });
-    try {
-      const identity = await initNFID();
-      const isAuth = await isAuthenticated();
-      const principal = identity.getPrincipal();
-      
-      set({
-        identity: isAuth ? identity : null,
-        principal: isAuth ? principal : null,
-        principalText: isAuth ? principal.toText() : null,
-        isAuthenticated: isAuth,
-        error: null,
-        isLoading: false,
-      });
+      login: async (principal: string) => {
+        set({ isLoading: true, error: null });
+        try {
+          // TODO (Workstream 2): Use NFID to get delegation chain and send to backend
+          const { token, user } = await api.auth.login(principal);
+          set({
+            isAuthenticated: true,
+            user,
+            token,
+            principal,
+            role: user.role,
+            isLoading: false,
+          });
+        } catch (err: any) {
+          set({ error: err.message, isLoading: false });
+        }
+      },
 
-      if (isAuth) {
-        await recreateAgent();
-        await recreateActor();
-      }
-    } catch (error: any) {
-      set({ error: error.message || 'Initialization failed', isLoading: false });
+      logout: () => {
+        set({
+          isAuthenticated: false,
+          user: null,
+          token: null,
+          principal: null,
+          role: null,
+          error: null,
+        });
+      },
+
+      setRole: (role: UserRole) => {
+        const user = get().user;
+        if (user) {
+          set({ role, user: { ...user, role } });
+        }
+      },
+
+      updateProfile: (updates: Partial<UserProfile>) => {
+        const user = get().user;
+        if (user) {
+          set({ user: { ...user, ...updates } });
+        }
+      },
+    }),
+    {
+      name: 'auth-storage',
+      // We don't persist isLoading or error
+      partialize: (state) => ({
+        isAuthenticated: state.isAuthenticated,
+        user: state.user,
+        token: state.token,
+        principal: state.principal,
+        role: state.role,
+      }),
     }
-  },
-
-  loginWithNFID: async (options?: LoginOptions) => {
-    set({ isLoading: true, error: null });
-    try {
-      const identity = await login(options);
-      const principal = identity.getPrincipal();
-      
-      await recreateAgent();
-      await recreateActor();
-
-      set({
-        identity,
-        principal,
-        principalText: principal.toText(),
-        isAuthenticated: true,
-        isLoading: false,
-      });
-    } catch (error: any) {
-      set({ error: error.message || 'Login failed', isLoading: false });
-    }
-  },
-
-  logout: async () => {
-    set({ isLoading: true });
-    try {
-      await logout();
-      await recreateAgent(); // Will recreate with anonymous identity
-      await recreateActor();
-
-      set({
-        identity: null,
-        principal: null,
-        principalText: null,
-        isAuthenticated: false,
-        role: null,
-        isLoading: false,
-      });
-    } catch (error: any) {
-      set({ error: error.message || 'Logout failed', isLoading: false });
-    }
-  },
-
-  setRole: (role: UserRole) => {
-    set({ role });
-  },
-}));
+  )
+);
