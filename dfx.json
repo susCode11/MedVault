@@ -4,8 +4,11 @@
       "type": "azle",
       "main": "server/index.ts",
       "custom": {
-        "experimental": true,
-        "candid_gen": "http"
+        "experimental": true
+      },
+      "declarations": {
+        "output": "client/src/declarations/medvault_backend",
+        "node_compatibility": true
       }
     },
     "internet_identity": {

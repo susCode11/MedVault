@@ -12,6 +12,7 @@
     "typecheck:client": "cd client && npx tsc --noEmit"
   },
   "devDependencies": {
+    "azle": "^0.29.0",
     "typescript": "^5.4.0"
   }
 }
