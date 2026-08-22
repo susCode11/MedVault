@@ -1,0 +1,10 @@
+service: () -> {
+    createRecord: (text, text, text, text, text, text) -> (text);
+    getProfile: () -> (opt record {"principal":text; name:text; createdAt:nat64; role:text; abhaId:text; updatedAt:nat64}) query;
+    getRecord: (text) -> (opt record {id:text; title:text; encryptionKeyId:text; createdAt:nat64; description:text; recordType:text; updatedAt:nat64; patientPrincipal:text; doctorPrincipal:text; ipfsCid:text}) query;
+    grantAccess: (text, vec text, nat32) -> (text);
+    listGrantedToMe: () -> (vec record {id:text; expiresAt:nat64; createdAt:nat64; granteePrincipal:text; patientPrincipal:text; recordIds:vec text; revokedAt:opt nat64}) query;
+    listMyGrants: () -> (vec record {id:text; expiresAt:nat64; createdAt:nat64; granteePrincipal:text; patientPrincipal:text; recordIds:vec text; revokedAt:opt nat64}) query;
+    listMyRecords: () -> (vec record {id:text; title:text; encryptionKeyId:text; createdAt:nat64; description:text; recordType:text; updatedAt:nat64; patientPrincipal:text; doctorPrincipal:text; ipfsCid:text}) query;
+    registerUser: (text, text, text) -> (record {"principal":text; name:text; createdAt:nat64; role:text; abhaId:text; updatedAt:nat64});
+}
