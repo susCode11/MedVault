@@ -14,15 +14,9 @@
 // Toggle MOCK_CANISTER = false once W2 delivers lib/canister.ts.
 // =============================================================================
 
-import { useMemo } from 'react';
 import { useAuthStore } from '../store/authStore';
-import { mockCanister, type MockCanister } from './__mocks__/mockCanister';
 
-// ---------------------------------------------------------------------------
-// Mock flag — flip to false when W2 delivers lib/canister.ts
-// ---------------------------------------------------------------------------
 
-const MOCK_CANISTER = true;
 
 // ---------------------------------------------------------------------------
 // Query Key Factories
@@ -76,55 +70,37 @@ export const CANISTER_QUERY_KEYS = {
   },
 } as const;
 
-// ---------------------------------------------------------------------------
-// Actor type
-// ---------------------------------------------------------------------------
+import { useState, useEffect } from 'react';
+import { getBackendActor, MedVaultBackend } from '../lib/canister';
 
-export type CanisterActor = MockCanister;
-// When MOCK_CANISTER=false, swap to:
-// export type CanisterActor = import('../lib/canister').MedVaultActor;
+export type CanisterActor = MedVaultBackend;
 
-// ---------------------------------------------------------------------------
-// useCanisterActor Hook
-// ---------------------------------------------------------------------------
-
-/**
- * Returns the canister actor (mock or real) and whether it is ready.
- *
- * "Ready" means:
- *   - In mock mode: always true
- *   - In real mode: agent has been initialised with a valid identity
- *
- * Usage:
- *   const { actor, isReady } = useCanisterActor();
- *   if (!isReady) return;
- *   const res = await actor.getRecord(id);
- */
 export function useCanisterActor(): {
-  actor: CanisterActor;
+  actor: CanisterActor | null;
   isReady: boolean;
   principal: string | null;
 } {
-  const principal   = useAuthStore((s) => s.principal);
-  const identity    = useAuthStore((s) => s.identity);
+  const principal = useAuthStore((s) => s.principal);
+  const identity = useAuthStore((s) => s.identity);
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
 
-  const actor = useMemo((): CanisterActor => {
-    if (MOCK_CANISTER) {
-      return mockCanister;
+  const [actor, setActor] = useState<CanisterActor | null>(null);
+
+  useEffect(() => {
+    let mounted = true;
+    if (isAuthenticated && identity) {
+      getBackendActor().then(a => {
+        if (mounted) setActor(a);
+      }).catch(err => {
+        console.error("Failed to initialize backend actor:", err);
+      });
+    } else {
+      setActor(null);
     }
+    return () => { mounted = false; };
+  }, [isAuthenticated, identity]);
 
-    // Real mode: build actor from W2's lib/canister.ts
-    // import { buildActor } from '../lib/canister';
-    // return buildActor(identity);
-    //
-    // Until W2 delivers lib/canister.ts, fall back to mock
-    return mockCanister;
-  }, [identity]);
-
-  const isReady = MOCK_CANISTER
-    ? true
-    : isAuthenticated && !!identity && !!principal;
+  const isReady = isAuthenticated && !!identity && !!principal && actor !== null;
 
   return { actor, isReady, principal };
 }

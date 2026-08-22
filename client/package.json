@@ -3,63 +3,38 @@
   "private": true,
   "version": "0.1.0",
   "type": "module",
-
-  "_comment_COORDINATION": [
-    "=====================================================================",
-    "  CROSS-WORKSTREAM COORDINATION — READ BEFORE TOUCHING THIS FILE",
-    "=====================================================================",
-    "  This file is shared across Workstream 2 (Core Services),",
-    "  Workstream 3 (State & Hooks), and Workstream 4 (UI).",
-    "",
-    "  ⚠️  DO NOT run `npm install` on your own branch until the final",
-    "      merged package.json is agreed upon by all workstreams.",
-    "      Running it early will generate a package-lock.json that",
-    "      conflicts with other workstreams' deps and breaks the lockfile.",
-    "",
-    "  ✅  CORRECT MERGE SEQUENCE:",
-    "      1. W2 appends their deps (nfid, lit-protocol, pinata)",
-    "      2. W4 appends their deps (vite, tailwind, react-router, etc.)",
-    "      3. W3 reviews the final merged file for conflicts",
-    "      4. ONE person runs `npm install` and commits package-lock.json",
-    "",
-    "  📌  WHERE TO ADD YOUR PACKAGES:",
-    "      W2 → append to `dependencies` block (see _w2_add_here marker)",
-    "      W4 → append to `dependencies` AND `devDependencies` blocks",
-    "           (see _w4_add_here markers)",
-    "====================================================================="
-  ],
-
   "scripts": {
     "dev": "vite",
-    "build": "tsc -b && vite build",
-    "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
-    "preview": "vite preview"
+    "build": "tsc && vite build",
+    "preview": "vite preview",
+    "typecheck": "tsc --noEmit"
   },
-
   "dependencies": {
-    "_comment_W3": "--- Workstream 3: State & Hooks (DO NOT REMOVE) ---",
-    "react": "^18.3.1",
-    "react-dom": "^18.3.1",
-    "zustand": "^4.5.4",
-    "@tanstack/react-query": "^5.51.15",
-    "@dfinity/agent": "^2.1.2",
-    "@dfinity/candid": "^2.1.2",
-    "@dfinity/principal": "^2.1.2",
-
-    "_comment_W2": "--- Workstream 2: Core Services — ADD BELOW THIS LINE ---",
-    "_w2_add_here": "e.g. @nfid/identitykit, @lit-protocol/*, pinata",
-
-    "_comment_W4": "--- Workstream 4: UI — ADD BELOW THIS LINE ---",
-    "_w4_add_here": "e.g. react-router-dom, lucide-react, recharts, clsx, date-fns"
+    "react": "^18.3.0",
+    "react-dom": "^18.3.0",
+    "react-router-dom": "^6.23.0",
+    "zustand": "^4.5.0",
+    "@tanstack/react-query": "^5.40.0",
+    "lucide-react": "^0.400.0",
+    "clsx": "^2.1.0",
+    "date-fns": "^3.6.0",
+    "@dfinity/agent": "^3.4.3",
+    "@dfinity/auth-client": "^3.4.3",
+    "@dfinity/identity": "^3.4.3",
+    "@dfinity/principal": "^3.4.3",
+    "@dfinity/candid": "^3.4.3",
+    "@nfid/identitykit": "^2.0.0",
+    "pinata": "^2.5.6"
   },
-
   "devDependencies": {
-    "_comment_W3_dev": "--- Workstream 3: Dev deps (DO NOT REMOVE) ---",
-    "typescript": "^5.4.5",
-    "@types/react": "^18.3.3",
+    "@types/react": "^18.3.0",
     "@types/react-dom": "^18.3.0",
-
-    "_comment_W4_dev": "--- Workstream 4: Build tools — ADD BELOW THIS LINE ---",
-    "_w4_dev_add_here": "e.g. vite, @vitejs/plugin-react, tailwindcss, autoprefixer, postcss, eslint"
+    "@vitejs/plugin-react": "^4.3.0",
+    "autoprefixer": "^10.4.0",
+    "postcss": "^8.4.0",
+    "tailwindcss": "^3.4.0",
+    "typescript": "^5.4.0",
+    "vite": "^5.4.0",
+    "vite-plugin-node-polyfills": "^0.22.0"
   }
 }

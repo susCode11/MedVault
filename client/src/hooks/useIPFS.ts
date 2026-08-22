@@ -16,11 +16,7 @@
 
 import { useCallback, useState } from 'react';
 
-// ---------------------------------------------------------------------------
-// Mock flag
-// ---------------------------------------------------------------------------
-
-const MOCK_PINATA = true;
+import { uploadEncryptedBlob, fetchFromIPFS as fetchPinata } from '../lib/pinata';
 
 // ---------------------------------------------------------------------------
 // PinataAdapter interface (W2 must implement in lib/pinata.ts)
@@ -51,49 +47,7 @@ export interface PinataAdapter {
   unpin: (cid: string) => Promise<void>;
 }
 
-// ---------------------------------------------------------------------------
-// Mock Pinata Adapter
-// ---------------------------------------------------------------------------
-
-const mockPinataAdapter: PinataAdapter = {
-  uploadBlob: async (blob, fileName, _metadata, onProgress) => {
-    // Simulate Pinata upload latency with progress events
-    if (onProgress) onProgress(0);
-    await new Promise((r) => setTimeout(r, 200));
-    if (onProgress) onProgress(25);
-    await new Promise((r) => setTimeout(r, 200));
-    if (onProgress) onProgress(50);
-    await new Promise((r) => setTimeout(r, 200));
-    if (onProgress) onProgress(75);
-    await new Promise((r) => setTimeout(r, 200));
-    if (onProgress) onProgress(100);
-
-    // Generate deterministic mock CID from file name
-    const hash = Array.from(fileName)
-      .reduce((acc, c) => (acc * 31 + c.charCodeAt(0)) & 0xffffffff, 0)
-      .toString(16)
-      .toUpperCase()
-      .padStart(8, '0');
-
-    const cid = `QmMOCK${hash}${Date.now().toString(36).toUpperCase()}`;
-    return {
-      cid,
-      gatewayUrl: `https://gateway.pinata.cloud/ipfs/${cid}`,
-      size: blob.size,
-    };
-  },
-
-  fetchByCid: async (cid) => {
-    await new Promise((r) => setTimeout(r, 300));
-    const placeholder = `MOCK_IPFS_CONTENT for CID: ${cid}`;
-    return new Blob([placeholder], { type: 'application/octet-stream' });
-  },
-
-  unpin: async (_cid) => {
-    await new Promise((r) => setTimeout(r, 200));
-    // No-op in mock
-  },
-};
+// Mock removed as W2 delivered lib/pinata.ts
 
 // ---------------------------------------------------------------------------
 // useIPFS Hook
@@ -117,14 +71,29 @@ export function useIPFS() {
   const [uploadError, setUploadError] = useState<Error | null>(null);
   const [fetchError,  setFetchError]  = useState<Error | null>(null);
 
-  const adapter: PinataAdapter = MOCK_PINATA
-    ? mockPinataAdapter
-    : (() => {
-        // Real mode: import W2's Pinata adapter
-        // import { pinataAdapter } from '../lib/pinata';
-        // return pinataAdapter;
-        return mockPinataAdapter; // fallback until W2 delivers
-      })();
+  const adapter: PinataAdapter = {
+    uploadBlob: async (blob, fileName, metadata, onProgress) => {
+      // lib/pinata doesn't support progress callbacks yet, so we just simulate it instantly
+      if (onProgress) onProgress(50);
+      const cid = await uploadEncryptedBlob(blob, {
+        ownerPrincipal: metadata?.ownerPrincipal || 'unknown',
+        fileName,
+        ...metadata
+      });
+      if (onProgress) onProgress(100);
+      return {
+        cid,
+        gatewayUrl: `https://gateway.pinata.cloud/ipfs/${cid}`,
+        size: blob.size,
+      };
+    },
+    fetchByCid: async (cid) => {
+      return await fetchPinata(cid);
+    },
+    unpin: async (_cid) => {
+      // W2 did not implement unpin, so this is a no-op for now.
+    }
+  };
 
   const uploadToIPFS = useCallback(
     async (

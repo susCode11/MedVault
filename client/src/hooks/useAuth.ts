@@ -31,83 +31,15 @@
 import { useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuthStore } from '../store/authStore';
-import { CANISTER_QUERY_KEYS } from './useCanister';
-import type { UserProfile, UserRole } from '../types/auth';
-
-// ---------------------------------------------------------------------------
-// Mock Canister Flag
-// ---------------------------------------------------------------------------
-
-/**
- * Set to false when W2 delivers lib/canister.ts and it exports:
- *   registerUser, getMyProfile, updateUser
- *
- * When false, uncomment the real import lines below and remove mock functions.
- */
-const MOCK_CANISTER = true;
+import { CANISTER_QUERY_KEYS, useCanisterActor } from './useCanister';
+import type { UserRole } from '../types/auth';
 
 // ---------------------------------------------------------------------------
 // Real canister imports (uncomment when W2 delivers lib/canister.ts)
 // ---------------------------------------------------------------------------
 // import { registerUser, getMyProfile, updateUser } from '../lib/canister';
 
-// ---------------------------------------------------------------------------
-// Mock canister functions (used until W2 delivers lib/canister.ts)
-// ---------------------------------------------------------------------------
-
-/** Simulates fetching the user profile from the canister. */
-const mockGetMyProfile = async (principal: string): Promise<UserProfile> => {
-  await new Promise((r) => setTimeout(r, 600));
-  return {
-    id: `profile-${principal}`,
-    principal,
-    role: 'patient',
-    displayName: 'Mock Patient',
-    avatarUrl: undefined,
-    abhaId: undefined,
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  };
-};
-
-/** Simulates registering a new user profile on the canister (first login). */
-const mockRegisterUser = async (
-  principal: string,
-  role: UserRole,
-  displayName: string,
-  opts?: { abhaId?: string; licenseNumber?: string; affiliation?: string }
-): Promise<UserProfile> => {
-  await new Promise((r) => setTimeout(r, 800));
-  return {
-    id: `profile-${principal}`,
-    principal,
-    role,
-    displayName,
-    abhaId: opts?.abhaId,
-    licenseNumber: opts?.licenseNumber,
-    affiliation: opts?.affiliation,
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  };
-};
-
-/** Simulates updating the user profile on the canister. */
-const mockUpdateUser = async (
-  _principal: string,
-  update: Partial<UserProfile>
-): Promise<UserProfile> => {
-  await new Promise((r) => setTimeout(r, 500));
-  // In mock mode, return the update merged with a base profile
-  return {
-    id: `profile-${_principal}`,
-    principal: _principal,
-    role: 'patient',
-    displayName: 'Mock Patient',
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-    ...update,
-  };
-};
+// Removed mock canister functions as W2 delivered lib/canister.ts
 
 // ---------------------------------------------------------------------------
 // Query Keys
@@ -145,6 +77,7 @@ export interface RegisterProfileInput {
  */
 export function useAuth() {
   const queryClient = useQueryClient();
+  const { actor, isReady } = useCanisterActor();
 
   // --- Read auth state from Zustand store ---
   const isAuthenticated  = useAuthStore((s) => s.isAuthenticated);
@@ -181,20 +114,14 @@ export function useAuth() {
   const profileQuery = useQuery({
     queryKey: CANISTER_QUERY_KEYS.users.byPrincipal(principal ?? ''),
     queryFn: async () => {
-      const fetch = MOCK_CANISTER
-        ? mockGetMyProfile
-        : (p: string) => import('../lib/canister').then((m) => m.getMyProfile(p));
-
-      const data = await (MOCK_CANISTER
-        ? mockGetMyProfile(principal!)
-        : (await import('../lib/canister')).getMyProfile(principal!));
-
-      // Write fetched profile into the auth store
-      setProfile(data);
-      return data;
+      if (!actor) throw new Error("Actor not ready");
+      const res = await actor.getUser(principal!);
+      if (!res.ok) throw new Error(res.error.message);
+      setProfile(res.data);
+      return res.data;
     },
     // Only run this query when authenticated, has a principal, and no profile yet
-    enabled: isAuthenticated && !!principal && !profile,
+    enabled: isAuthenticated && !!principal && !profile && isReady,
     staleTime: Infinity,
     retry: 2,
   });
@@ -214,23 +141,21 @@ export function useAuth() {
    */
   const registerProfileMutation = useMutation({
     mutationFn: async (input: RegisterProfileInput) => {
-      if (!principal) throw new Error('No principal — not authenticated');
+      if (!principal || !actor) throw new Error('Not authenticated');
 
-      const result = MOCK_CANISTER
-        ? await mockRegisterUser(principal, input.role, input.displayName, {
-            abhaId:        input.abhaId,
-            licenseNumber: input.licenseNumber,
-            affiliation:   input.affiliation,
-          })
-        : await (await import('../lib/canister')).registerUser(
-            input.role,
-            input.displayName,
-            input.abhaId,
-            input.licenseNumber,
-            input.affiliation
-          );
-
-      return result;
+      const res = await actor.registerUser({
+        id: `profile-${principal}`, // Will be overwritten by backend anyway
+        principal,
+        role: input.role,
+        displayName: input.displayName,
+        abhaId: input.abhaId,
+        licenseNumber: input.licenseNumber,
+        affiliation: input.affiliation,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      });
+      if (!res.ok) throw new Error(res.error.message);
+      return res.data;
     },
     onSuccess: (data) => {
       setProfile(data);
@@ -249,13 +174,11 @@ export function useAuth() {
    */
   const linkAbhaMutation = useMutation({
     mutationFn: async (abhaId: string) => {
-      if (!principal) throw new Error('No principal — not authenticated');
+      if (!principal || !actor) throw new Error('Not authenticated');
 
-      const result = MOCK_CANISTER
-        ? await mockUpdateUser(principal, { abhaId })
-        : await (await import('../lib/canister')).updateUser({ abhaId });
-
-      return result;
+      const res = await actor.updateUser({ principal, abhaId });
+      if (!res.ok) throw new Error(res.error.message);
+      return res.data;
     },
     onSuccess: (data) => {
       setProfile(data);

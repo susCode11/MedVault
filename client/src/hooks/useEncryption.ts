@@ -21,11 +21,9 @@
 import { useCallback, useState } from 'react';
 import { useAuthStore } from '../store/authStore';
 
-// ---------------------------------------------------------------------------
-// Mock flag
-// ---------------------------------------------------------------------------
+import { encryptFile as litEncryptFile, decryptFile as litDecryptFile } from '../lib/lit';
 
-const MOCK_LIT = true;
+
 
 // ---------------------------------------------------------------------------
 // LitAdapter interface (W2 must implement in lib/lit.ts)
@@ -64,42 +62,7 @@ export interface LitAdapter {
   ) => Promise<Blob>;
 }
 
-// ---------------------------------------------------------------------------
-// Mock Lit Adapter
-// ---------------------------------------------------------------------------
-
-const mockLitAdapter: LitAdapter = {
-  encryptFile: async (file, ownerPrincipal) => {
-    // Simulate Lit SDK latency
-    await new Promise((r) => setTimeout(r, 600));
-
-    // Mock: wrap original content in a base64 "encrypted" blob
-    const buffer = await file.arrayBuffer();
-    const base64 = btoa(
-      String.fromCharCode(...new Uint8Array(buffer).slice(0, 100))
-    );
-    const encryptedFile = new Blob([`MOCK_ENCRYPTED:${base64}`], {
-      type: 'application/octet-stream',
-    });
-
-    return {
-      encryptedFile,
-      encryptedSymmetricKey: `mock-key-${ownerPrincipal}-${Date.now()}`,
-      litAccessConditions: JSON.stringify({
-        conditionType: 'mock',
-        owner: ownerPrincipal,
-      }),
-    };
-  },
-
-  decryptFile: async (encryptedCid, _key, _conditions, _identity) => {
-    // Simulate Lit SDK latency
-    await new Promise((r) => setTimeout(r, 400));
-    // Mock: return a placeholder PDF blob
-    const placeholder = `MOCK_DECRYPTED_FILE for CID: ${encryptedCid}`;
-    return new Blob([placeholder], { type: 'application/pdf' });
-  },
-};
+// Removed mockLitAdapter
 
 // ---------------------------------------------------------------------------
 // useEncryption Hook
@@ -136,14 +99,21 @@ export function useEncryption() {
   const [encryptError, setEncryptError] = useState<Error | null>(null);
   const [decryptError, setDecryptError] = useState<Error | null>(null);
 
-  const adapter: LitAdapter = MOCK_LIT
-    ? mockLitAdapter
-    : (() => {
-        // Real mode: import and use W2's lit.ts
-        // import { litAdapter } from '../lib/lit';
-        // return litAdapter;
-        return mockLitAdapter; // fallback until W2 delivers
-      })();
+  const adapter: LitAdapter = {
+    encryptFile: async (file, ownerPrincipal) => {
+      const res = await litEncryptFile(file, ownerPrincipal);
+      // Map the W2 stub format to LitEncryptResult
+      return {
+        encryptedFile: new Blob([res.ciphertext], { type: 'application/octet-stream' }),
+        encryptedSymmetricKey: res.dataToEncryptHash, // store the hash in place of the symmetric key for now
+        litAccessConditions: JSON.stringify({ owner: ownerPrincipal })
+      };
+    },
+    decryptFile: async (_encryptedCid, encryptedSymmetricKey, litAccessConditions) => {
+      // W2 decrypt stub signature
+      return await litDecryptFile('mock_ciphertext', encryptedSymmetricKey, JSON.parse(litAccessConditions).owner);
+    }
+  };
 
   const encryptFile = useCallback(
     async (file: File): Promise<LitEncryptResult> => {
