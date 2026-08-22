@@ -3,21 +3,15 @@ export type RecordStatus = 'active' | 'archived' | 'pending';
 
 export interface MedicalRecord {
   id: string;
-  patientId: string;
-  doctorId?: string;
+  patientPrincipal: string;
+  doctorPrincipal: string;
   title: string;
   description: string;
-  category: RecordCategory;
-  status: RecordStatus;
+  recordType: string;
   ipfsCid: string;
-  encryptedSymKey: string;
-  fileName: string;
-  fileSize: number;
-  mimeType: string;
-  hospital?: string;
-  tags: string[];
-  createdAt: number;
-  updatedAt: number;
+  encryptionKeyId: string;
+  createdAt: bigint;
+  updatedAt: bigint;
 }
 
 export interface RecordFilter {

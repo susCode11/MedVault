@@ -13,14 +13,4 @@ export interface PaginatedResponse<T> {
   hasMore: boolean;
 }
 
-export interface AuditEntry {
-  id: string;
-  action: string;
-  performedBy: string;
-  performerName: string;
-  targetId: string;
-  targetType: 'record' | 'access' | 'user' | 'emergency';
-  details: string;
-  timestamp: number;
-  ipAddress?: string;
-}
+

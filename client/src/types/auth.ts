@@ -1,16 +1,14 @@
 export type UserRole = 'patient' | 'doctor' | 'admin';
 
 export interface UserProfile {
-  id: string;
   principal: string;
-  role: UserRole;
-  displayName: string;
-  email?: string;
-  abhaId?: string;
-  abhaLinked: boolean;
-  avatarUrl?: string;
-  createdAt: number;
-  updatedAt: number;
+  name: string;
+  role: string; // 'patient' | 'doctor' | 'admin'
+  abhaId: string;
+  createdAt: bigint;
+  updatedAt: bigint;
+  avatarUrl: [string] | [];
+  email: [string] | [];
 }
 
 export interface AuthState {
@@ -34,4 +32,10 @@ export interface DelegationChain {
     signature: Uint8Array;
   }>;
   publicKey: Uint8Array;
+}
+export interface LoginOptions {
+  provider?: 'nfid' | 'internet_identity';
+  customTTL?: bigint;
+  onSuccess?: (identity: any) => void;
+  onError?: (error: Error) => void;
 }

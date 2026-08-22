@@ -1,68 +1,56 @@
-import { UserProfile, LoginResponse, UserRole } from '../types/auth';
-import { MedicalRecord, RecordFilter, RecordCategory, RecordStatus } from '../types/records';
-import { AccessGrant, AccessRequest, AccessType, AccessStatus } from '../types/access';
+import { UserProfile, LoginResponse } from '../types/auth';
+import { MedicalRecord, RecordFilter } from '../types/records';
+import { AccessGrant } from '../types/access';
 import { CONSTANTS } from '../utils/constants';
 
 // --- MOCK DATA ---
 const mockUsers: Record<string, UserProfile> = {
   'patient-1': {
-    id: 'patient-1',
     principal: 'aaaaa-aa',
     role: 'patient',
-    displayName: 'John Doe',
-    email: 'john@example.com',
+    name: 'John Doe',
+    email: ['john@example.com'],
     abhaId: '12-3456-7890-1234',
-    abhaLinked: true,
-    createdAt: Date.now() - 10000000,
-    updatedAt: Date.now(),
+    createdAt: BigInt(Date.now() - 10000000),
+    updatedAt: BigInt(Date.now()),
+    avatarUrl: []
   },
   'doctor-1': {
-    id: 'doctor-1',
     principal: 'bbbbb-bb',
     role: 'doctor',
-    displayName: 'Dr. Sarah Smith',
-    email: 'sarah.smith@hospital.com',
-    abhaLinked: false,
-    createdAt: Date.now() - 20000000,
-    updatedAt: Date.now(),
+    name: 'Dr. Sarah Smith',
+    email: ['sarah.smith@hospital.com'],
+    abhaId: '',
+    createdAt: BigInt(Date.now() - 20000000),
+    updatedAt: BigInt(Date.now()),
+    avatarUrl: []
   }
 };
 
 let mockRecords: MedicalRecord[] = [
   {
     id: 'rec-1',
-    patientId: 'patient-1',
-    doctorId: 'doctor-1',
+    patientPrincipal: 'aaaaa-aa',
+    doctorPrincipal: 'bbbbb-bb',
     title: 'Complete Blood Count',
     description: 'Annual physical bloodwork',
-    category: 'lab_report',
-    status: 'active',
+    recordType: 'lab_report',
     ipfsCid: 'QmX...',
-    encryptedSymKey: 'enc...',
-    fileName: 'cbc-report.pdf',
-    fileSize: 102400,
-    mimeType: 'application/pdf',
-    hospital: 'City General',
-    tags: ['blood', 'annual'],
-    createdAt: Date.now() - 5000000,
-    updatedAt: Date.now() - 5000000,
+    encryptionKeyId: 'enc...',
+    createdAt: BigInt(Date.now() - 5000000),
+    updatedAt: BigInt(Date.now() - 5000000),
   },
   {
     id: 'rec-2',
-    patientId: 'patient-1',
+    patientPrincipal: 'aaaaa-aa',
+    doctorPrincipal: 'bbbbb-bb',
     title: 'Amoxicillin Prescription',
     description: 'For sinus infection',
-    category: 'prescription',
-    status: 'active',
+    recordType: 'prescription',
     ipfsCid: 'QmY...',
-    encryptedSymKey: 'enc...',
-    fileName: 'prescription.pdf',
-    fileSize: 51200,
-    mimeType: 'application/pdf',
-    hospital: 'City General',
-    tags: ['antibiotic'],
-    createdAt: Date.now() - 2000000,
-    updatedAt: Date.now() - 2000000,
+    encryptionKeyId: 'enc...',
+    createdAt: BigInt(Date.now() - 2000000),
+    updatedAt: BigInt(Date.now() - 2000000),
   }
 ];
 
@@ -90,13 +78,12 @@ export const mockRecordApi = {
   getRecords: async (filter?: RecordFilter): Promise<MedicalRecord[]> => {
     await delay();
     let res = [...mockRecords];
-    if (filter?.category) res = res.filter(r => r.category === filter.category);
-    if (filter?.status) res = res.filter(r => r.status === filter.status);
+    if (filter?.category) res = res.filter(r => r.recordType === filter.category);
     if (filter?.search) {
       const s = filter.search.toLowerCase();
       res = res.filter(r => r.title.toLowerCase().includes(s) || r.description.toLowerCase().includes(s));
     }
-    return res.sort((a, b) => b.createdAt - a.createdAt);
+    return res.sort((a, b) => Number(b.createdAt - a.createdAt));
   },
   getRecord: async (id: string): Promise<MedicalRecord> => {
     await delay();

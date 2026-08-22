@@ -31,7 +31,7 @@ export const useAuthStore = create<AuthStore>()(
             user,
             token,
             principal,
-            role: user.role,
+            role: user.role as UserRole,
             isLoading: false,
           });
         } catch (err: any) {
