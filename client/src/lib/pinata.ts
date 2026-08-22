@@ -4,8 +4,8 @@ import { PinataSDK } from 'pinata';
 // Replace these mock values with real credentials from the Pinata dashboard.
 // Generate a JWT and Gateway URL at https://app.pinata.cloud/developers/api-keys
 // Then add them to client/.env.local as VITE_PINATA_JWT and VITE_PINATA_GATEWAY.
-const pinataJwt = process.env.VITE_PINATA_JWT || 'mock-jwt';
-const pinataGateway = process.env.VITE_PINATA_GATEWAY || 'mock-gateway.mypinata.cloud';
+const pinataJwt = import.meta.env?.VITE_PINATA_JWT || 'mock-jwt';
+const pinataGateway = import.meta.env?.VITE_PINATA_GATEWAY || 'mock-gateway.mypinata.cloud';
 
 // --- Singleton SDK Instance ---
 
@@ -71,12 +71,11 @@ export async function uploadEncryptedBlob(
     }
   }
 
-  const result = await pinata.upload.file(file).addMetadata({
-    name: metadata.fileName || `medvault-${Date.now()}`,
-    keyvalues,
-  });
+  const result = await pinata.upload.public.file(file)
+    .name(metadata.fileName || `medvault-${Date.now()}`)
+    .keyvalues(keyvalues);
 
-  return result.IpfsHash;
+  return result.cid;
 }
 
 // --- Fetch ---

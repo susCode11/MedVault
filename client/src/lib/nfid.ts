@@ -9,10 +9,10 @@ const DEFAULT_MAX_TIME_TO_LIVE = BigInt(7 * 24 * 60 * 60 * 1_000_000_000);
 export const NFID_CONFIG = {
   appName: 'MedVault',
   // Note: Replace with actual deployed logo URL when moving to production
-  appLogo: 'https://medvault.app/logo.png', 
+  appLogo: 'https://medvault.app/logo.png',
   nfidProviderUrl: 'https://nfid.one/authenticate',
-  iiProviderUrl: process.env.DFX_NETWORK === 'ic' 
-    ? 'https://identity.ic0.app' 
+  iiProviderUrl: process.env.DFX_NETWORK === 'ic'
+    ? 'https://identity.ic0.app'
     : `http://${process.env.INTERNET_IDENTITY_CANISTER_ID || 'rdmx6-jaaaa-aaaaa-aaadq-cai'}.localhost:4943`,
   targets: process.env.MEDVAULT_BACKEND_CANISTER_ID ? [process.env.MEDVAULT_BACKEND_CANISTER_ID] : [],
 };
@@ -52,10 +52,10 @@ export const initNFID = async (): Promise<Identity> => {
  */
 export const login = async (options?: LoginOptions): Promise<Identity> => {
   const client = await getAuthClient();
-  
+
   const provider = options?.provider || 'nfid';
   let identityProvider = NFID_CONFIG.nfidProviderUrl;
-  
+
   if (provider === 'nfid') {
     const params = new URLSearchParams({
       applicationName: NFID_CONFIG.appName,
@@ -79,7 +79,7 @@ export const login = async (options?: LoginOptions): Promise<Identity> => {
         if (options?.onSuccess) options.onSuccess(identity);
         resolve(identity);
       },
-      onError: (err) => {
+      onError: (err: any) => {
         const error = new Error(err || 'Login failed');
         if (options?.onError) options.onError(error);
         reject(error);

@@ -1,24 +1,19 @@
 export interface EmergencyAccessEvent {
   id: string;
-  doctorId: string;
-  doctorName: string;
-  patientId: string;
-  patientName: string;
+  requesterPrincipal: string;
+  patientPrincipal: string;
   reason: string;
-  justification: string;
-  recordsAccessed: string[];
-  accessedAt: number;
-  expiresAt: number;
-  reported: boolean;
-  reportId?: string;
+  status: string;
+  createdAt: bigint;
+  resolvedAt: [bigint] | [];
+  resolverPrincipal: [string] | [];
 }
 
 export interface AbuseReport {
   id: string;
+  reporterPrincipal: string;
+  reportedPrincipal: string;
   emergencyEventId: string;
-  reportedBy: string;
-  reportedAt: number;
   reason: string;
-  status: 'open' | 'investigating' | 'resolved' | 'dismissed';
-  resolution?: string;
+  createdAt: bigint;
 }

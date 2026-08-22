@@ -1,5 +1,4 @@
-// TODO (Workstream 1): BLANK SPACE - Type Sync
-// Workstream 1 must verify this type matches the final Azle backend Candid type definitions.
+// ✅ Workstream 1: Type Sync COMPLETE — matches Azle backend Candid definitions.
 
 export type AuditAction = 
   | 'LOGIN'
@@ -11,11 +10,11 @@ export type AuditAction =
   | 'FILE_ABUSE_REPORT';
 
 export interface AuditEntry {
-  id: string; // UUID
-  actorId: string; // Principal string of the person performing the action
-  patientId?: string; // Principal string of the patient affected
-  action: AuditAction;
-  details: string; // JSON string or human-readable description
-  timestamp: bigint; // Unix timestamp
-  ipAddress?: string;
+  id: string;
+  actorPrincipal: string;
+  action: string;
+  targetRecordId: [string] | [];
+  targetPrincipal: [string] | [];
+  timestamp: bigint;
+  details: string;
 }
