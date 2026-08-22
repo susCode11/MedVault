@@ -7,6 +7,7 @@ import { formatDate, formatFileSize } from '../../../utils/format';
 import { Download, Share2, FileText, Shield, Key } from 'lucide-react';
 import { CONSTANTS } from '../../../utils/constants';
 import { useNotificationStore } from '../../../store/notificationStore';
+import { useDownloadRecord } from '../../../hooks/useRecords';
 
 interface RecordViewerProps {
   record: MedicalRecord | null;
@@ -18,6 +19,7 @@ export const RecordViewer: React.FC<RecordViewerProps> = ({ record, isOpen, onCl
   const [isDecrypting, setIsDecrypting] = useState(false);
   const [decryptedUrl, setDecryptedUrl] = useState<string | null>(null);
   const { addToast } = useNotificationStore();
+  const downloadRecord = useDownloadRecord();
 
   React.useEffect(() => {
     // Reset state when a new record is opened
@@ -28,15 +30,20 @@ export const RecordViewer: React.FC<RecordViewerProps> = ({ record, isOpen, onCl
   if (!record) return null;
   const catConfig = CONSTANTS.RECORD_CATEGORIES.find(c => c.id === record.category) || CONSTANTS.RECORD_CATEGORIES[6];
 
-  const handleDecrypt = () => {
+  const handleDecrypt = async () => {
     setIsDecrypting(true);
-    // Simulate decryption process via Lit Protocol / IPFS (Workstream 2)
-    setTimeout(() => {
-      setIsDecrypting(false);
-      // For mock, just show a placeholder image or PDF iframe
+    try {
+      // For now, since hook is a stub, this will just "succeed"
+      const blob = await downloadRecord.mutateAsync(record.id);
+      
+      // For mock, just show a placeholder
       setDecryptedUrl('data:text/html,<h1>Simulated Decrypted Content</h1>');
       addToast({ type: 'success', message: 'Record decrypted successfully' });
-    }, 2000);
+    } catch (error) {
+      addToast({ type: 'error', message: 'Decryption failed' });
+    } finally {
+      setIsDecrypting(false);
+    }
   };
 
   return (

@@ -4,11 +4,19 @@ import { AccessRequestCard } from '../../components/access/AccessRequestCard';
 import { AccessRequest } from '../../types/access';
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
+import { useAccessRequests, useGrantAccess } from '../../hooks/useAccess';
 
 export const AccessControls: React.FC = () => {
-  const pendingRequests: AccessRequest[] = [
-    { id: '2', patientId: 'me', doctorId: 'dr-wilson', status: 'pending', durationHours: 24, reason: 'Consultation review', accessType: 'read', recordIds: [] }
-  ];
+  const { data: pendingRequests = [], isLoading } = useAccessRequests('patient');
+  const grantAccess = useGrantAccess();
+
+  const handleApprove = async (request: AccessRequest) => {
+    await grantAccess.mutateAsync({ requestId: request.id, approved: true });
+  };
+
+  const handleDeny = async (request: AccessRequest) => {
+    await grantAccess.mutateAsync({ requestId: request.id, approved: false });
+  };
 
   return (
     <div className="space-y-8">
@@ -33,8 +41,8 @@ export const AccessControls: React.FC = () => {
               <AccessRequestCard 
                 key={req.id} 
                 request={req} 
-                onApprove={() => {}} 
-                onDeny={() => {}} 
+                onApprove={handleApprove} 
+                onDeny={handleDeny} 
               />
             ))}
           </div>

@@ -8,8 +8,8 @@ const DEFAULT_MAX_TIME_TO_LIVE = BigInt(7 * 24 * 60 * 60 * 1_000_000_000);
 
 export const NFID_CONFIG = {
   appName: 'MedVault',
-  // TODO (Workstream - UI): Add actual logo URL once deployed
-  appLogo: 'https://nfid.one/icons/favicon-96x96.png', 
+  // Note: Replace with actual deployed logo URL when moving to production
+  appLogo: 'https://medvault.app/logo.png', 
   nfidProviderUrl: 'https://nfid.one/authenticate',
   iiProviderUrl: process.env.DFX_NETWORK === 'ic' 
     ? 'https://identity.ic0.app' 

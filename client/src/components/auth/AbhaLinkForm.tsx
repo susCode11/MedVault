@@ -5,6 +5,7 @@ import { Input } from '../ui/Input';
 import { CheckCircle, Fingerprint, Smartphone } from 'lucide-react';
 import { useAuthStore } from '../../../store/authStore';
 import { useNotificationStore } from '../../../store/notificationStore';
+import { useLinkAbha } from '../../../hooks/useAbha';
 
 export const AbhaLinkForm: React.FC = () => {
   const [step, setStep] = useState<1 | 2>(1);
@@ -13,18 +14,23 @@ export const AbhaLinkForm: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
   const { updateProfile } = useAuthStore();
   const { addToast } = useNotificationStore();
+  const linkAbha = useLinkAbha();
 
   const handleSendOtp = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!abhaId) return;
     
     setIsLoading(true);
-    // Simulate API call to ABHA sandbox
-    setTimeout(() => {
-      setIsLoading(false);
+    try {
+      // Stub hook handles the mutation
+      await linkAbha.mutateAsync({ abhaId, otp: '' });
       setStep(2);
       addToast({ type: 'info', message: 'OTP sent to registered mobile number' });
-    }, 1500);
+    } catch (error) {
+      addToast({ type: 'error', message: 'Failed to send OTP' });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleVerifyOtp = async (e: React.FormEvent) => {
@@ -32,12 +38,15 @@ export const AbhaLinkForm: React.FC = () => {
     if (!otp) return;
 
     setIsLoading(true);
-    // Simulate verification
-    setTimeout(() => {
-      setIsLoading(false);
+    try {
+      await linkAbha.mutateAsync({ abhaId, otp });
       updateProfile({ abhaId, abhaLinked: true });
       addToast({ type: 'success', message: 'ABHA ID successfully linked to MedVault' });
-    }, 1500);
+    } catch (error) {
+      addToast({ type: 'error', message: 'Invalid OTP' });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
