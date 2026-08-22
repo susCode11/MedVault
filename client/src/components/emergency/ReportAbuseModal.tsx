@@ -5,6 +5,7 @@ import { Button } from '../ui/Button';
 import { Textarea } from '../ui/Textarea';
 import { ShieldAlert } from 'lucide-react';
 import { useNotificationStore } from '../../../store/notificationStore';
+import { useReportAbuse } from '../../../hooks/useReport';
 
 interface ReportAbuseModalProps {
   isOpen: boolean;
@@ -14,21 +15,21 @@ interface ReportAbuseModalProps {
 
 export const ReportAbuseModal: React.FC<ReportAbuseModalProps> = ({ isOpen, onClose, event }) => {
   const [reason, setReason] = useState('');
-  const [isSubmitting, setIsSubmitting] = useState(false);
   const { addToast } = useNotificationStore();
+  const reportAbuse = useReportAbuse();
 
   if (!event) return null;
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!reason) return;
-    setIsSubmitting(true);
     
-    // Simulate API call
-    setTimeout(() => {
-      setIsSubmitting(false);
+    try {
+      await reportAbuse.mutateAsync({ eventId: event.id, reason });
       addToast({ type: 'success', message: 'Abuse report submitted for investigation.' });
       onClose();
-    }, 1500);
+    } catch (error) {
+      addToast({ type: 'error', message: 'Failed to submit report' });
+    }
   };
 
   return (
@@ -51,10 +52,10 @@ export const ReportAbuseModal: React.FC<ReportAbuseModalProps> = ({ isOpen, onCl
         />
 
         <div className="pt-4 flex justify-end space-x-3 border-t border-surface-border">
-          <Button variant="ghost" onClick={onClose} disabled={isSubmitting}>
+          <Button variant="ghost" onClick={onClose} disabled={reportAbuse.isPending}>
             Cancel
           </Button>
-          <Button variant="danger" onClick={handleSubmit} isLoading={isSubmitting} disabled={!reason}>
+          <Button variant="danger" onClick={handleSubmit} isLoading={reportAbuse.isPending} disabled={!reason}>
             Submit Report
           </Button>
         </div>

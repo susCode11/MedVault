@@ -10,6 +10,7 @@ import { formatFileSize } from '../../../utils/format';
 import { EncryptionProgress } from './EncryptionProgress';
 import { useRecordStore } from '../../../store/recordStore';
 import { useNotificationStore } from '../../../store/notificationStore';
+import { useUploadRecord } from '../../../hooks/useRecords';
 
 export const UploadForm: React.FC = () => {
   const [file, setFile] = useState<File | null>(null);
@@ -21,6 +22,7 @@ export const UploadForm: React.FC = () => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { uploadProgress, setUploadProgress } = useRecordStore();
   const { addToast } = useNotificationStore();
+  const uploadRecord = useUploadRecord();
 
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault();
@@ -29,32 +31,32 @@ export const UploadForm: React.FC = () => {
     }
   };
 
-  const handleUpload = () => {
+  const handleUpload = async () => {
     if (!file || !title || !category) return;
     
-    // Simulate upload process
     setUploadProgress({ stage: 'encrypting', percent: 10, message: 'Generating symmetric keys...' });
     
-    setTimeout(() => {
-      setUploadProgress({ stage: 'uploading', percent: 40, message: 'Uploading to IPFS network...' });
+    try {
+      await uploadRecord.mutateAsync({
+        file,
+        metadata: { title, description, category, hospital }
+      });
+      
+      setUploadProgress({ stage: 'complete', percent: 100, message: 'Record securely stored.' });
+      addToast({ type: 'success', message: 'Medical record uploaded successfully' });
+      
       setTimeout(() => {
-        setUploadProgress({ stage: 'registering', percent: 80, message: 'Recording CID on Internet Computer...' });
-        setTimeout(() => {
-          setUploadProgress({ stage: 'complete', percent: 100, message: 'Record securely stored.' });
-          addToast({ type: 'success', message: 'Medical record uploaded successfully' });
-          
-          // Reset form after a delay
-          setTimeout(() => {
-            setUploadProgress(null);
-            setFile(null);
-            setTitle('');
-            setDescription('');
-            setCategory('');
-            setHospital('');
-          }, 2000);
-        }, 1500);
+        setUploadProgress(null);
+        setFile(null);
+        setTitle('');
+        setDescription('');
+        setCategory('');
+        setHospital('');
       }, 2000);
-    }, 1500);
+    } catch (error) {
+      addToast({ type: 'error', message: 'Failed to upload record' });
+      setUploadProgress(null);
+    }
   };
 
   if (uploadProgress) {
@@ -147,7 +149,8 @@ export const UploadForm: React.FC = () => {
           <Button 
             variant="primary" 
             onClick={handleUpload} 
-            disabled={!file || !title || !category}
+            disabled={!file || !title || !category || uploadRecord.isPending}
+            isLoading={uploadRecord.isPending}
           >
             Encrypt & Upload
           </Button>

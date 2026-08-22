@@ -1,12 +1,10 @@
 import React from 'react';
 import { AccessRequestCard } from '../../components/access/AccessRequestCard';
 import { AccessRequest } from '../../types/access';
+import { useAccessRequests } from '../../hooks/useAccess';
 
 export const DoctorRequestAccess: React.FC = () => {
-  // Mock requests
-  const requests: AccessRequest[] = [
-    { id: '1', patientId: '91-1234-5678-9012', doctorId: 'dr-smith', status: 'pending', durationHours: 24, reason: 'Follow-up consultation for blood work', accessType: 'read', recordIds: [] },
-  ];
+  const { data: requests = [], isLoading } = useAccessRequests('doctor');
 
   return (
     <div className="space-y-6">

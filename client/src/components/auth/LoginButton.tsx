@@ -1,21 +1,18 @@
 import React from 'react';
 import { Button } from '../ui/Button';
-import { useAuthStore } from '../../../store/authStore';
+import { useAuthStore } from '../../../store/authStore'; // Keep for getState()
 import { useNavigate } from 'react-router-dom';
 import { Fingerprint } from 'lucide-react';
 
-// TODO (Workstream 4): Replace useAuthStore with useAuth from '../../hooks/useAuth' 
-// once Workstream 3 implements the hook.
-// import { useAuth } from '../../hooks/useAuth';
+import { useAuth } from '../../hooks/useAuth';
 
 export const LoginButton: React.FC = () => {
-  const { login, isLoading } = useAuthStore();
+  const { login, isLoading } = useAuth();
   const navigate = useNavigate();
 
   const handleLogin = async () => {
-    // For mock purposes, just simulate a login
-    // In Workstream 2, this will open the II popup and get the delegation
-    await login('mock-principal-12345');
+    // Call the real auth hook
+    await login({ provider: 'nfid' });
     
     // Check if user has a role, if not send to role select
     const userRole = useAuthStore.getState().role;

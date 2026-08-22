@@ -1,9 +1,13 @@
 import React, { useState } from 'react';
 import { BreakGlassButton } from '../../components/emergency/BreakGlassButton';
 import { EmergencyForm } from '../../components/emergency/EmergencyForm';
+import { useBreakGlass } from '../../hooks/useEmergency';
+import { useNotificationStore } from '../../store/notificationStore';
 
 export const DoctorEmergency: React.FC = () => {
   const [isFormVisible, setIsFormVisible] = useState(false);
+  const breakGlass = useBreakGlass();
+  const { addToast } = useNotificationStore();
 
   return (
     <div className="space-y-6">
@@ -20,9 +24,17 @@ export const DoctorEmergency: React.FC = () => {
         <div className="max-w-2xl mx-auto">
           <EmergencyForm 
             onCancel={() => setIsFormVisible(false)}
-            onSubmit={(data) => {
-              console.log('Emergency Access Requested:', data);
-              // Handle submit
+            onSubmit={async (data) => {
+              try {
+                await breakGlass.mutateAsync({
+                  patientId: data.patientId,
+                  reason: data.reason,
+                });
+                addToast({ type: 'success', message: 'Emergency access granted' });
+                setIsFormVisible(false);
+              } catch (error) {
+                addToast({ type: 'error', message: 'Failed to request emergency access' });
+              }
             }}
           />
         </div>

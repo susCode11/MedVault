@@ -4,15 +4,16 @@ import { RecordList } from '../../components/records/RecordList';
 import { RecordFilter } from '../../components/records/RecordFilter';
 import { RecordViewer } from '../../components/records/RecordViewer';
 import { MedicalRecord } from '../../types/records';
+import { useRecords } from '../../hooks/useRecords';
 
 export const PatientReports: React.FC = () => {
-  const { records, isLoading, fetchRecords, filters, setFilters } = useRecordStore();
+  const { filters, setFilters } = useRecordStore();
   const [selectedRecord, setSelectedRecord] = React.useState<MedicalRecord | null>(null);
+  const { data: records = [], isLoading } = useRecords();
 
   useEffect(() => {
-    fetchRecords();
     return () => setFilters({ category: undefined });
-  }, [fetchRecords, setFilters]);
+  }, [setFilters]);
 
   const filteredRecords = records.filter(r => {
     if (filters.category && r.category !== filters.category) return false;
