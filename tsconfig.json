@@ -1,3 +1,19 @@
 {
-  "files": []
+  "compilerOptions": {
+    "target": "ES2024",
+    "module": "ES2022",
+    "moduleResolution": "bundler",
+    "strict": true,
+    "allowJs": true,
+    "noEmit": true,
+    "allowSyntheticDefaultImports": true,
+    "skipLibCheck": true,
+    "paths": {
+      "@lib/*": ["./server/lib/*"],
+      "@utils/*": ["./server/utils/*"]
+    }
+  },
+  "include": [
+    "./server/**/*.ts"
+  ]
 }
