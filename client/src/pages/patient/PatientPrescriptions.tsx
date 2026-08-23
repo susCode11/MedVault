@@ -1,18 +1,18 @@
-import React, { useEffect } from 'react';
-import { useRecordStore } from '../../store/recordStore';
+import React, { useEffect, useState } from 'react';
+import { useRecordsList } from '../../hooks/useRecords';
 import { RecordList } from '../../components/records/RecordList';
 import { RecordViewer } from '../../components/records/RecordViewer';
 import { MedicalRecord } from '../../types/records';
 
 export const PatientPrescriptions: React.FC = () => {
-  const { records, isLoading, fetchRecords } = useRecordStore();
-  const [selectedRecord, setSelectedRecord] = React.useState<MedicalRecord | null>(null);
+  const { records, isLoading, refetch: fetchRecords } = useRecordsList();
+  const [selectedRecord, setSelectedRecord] = useState<MedicalRecord | null>(null);
 
   useEffect(() => {
     fetchRecords();
   }, [fetchRecords]);
 
-  const prescriptions = records.filter(r => r.category === 'prescription');
+  const prescriptions = records.filter((r: MedicalRecord) => r.category === 'prescription');
 
   return (
     <div className="space-y-6">

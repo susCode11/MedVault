@@ -1,10 +1,11 @@
 import React from 'react';
 import { TimelineView } from '../../components/timeline/TimelineView';
-import { TimelineEvent } from '../../components/timeline/TimelineCard';
-import { useTimeline } from '../../hooks/useTimeline';
+import { useActorTimeline } from '../../hooks/useTimeline';
+import { useAuthStore } from '../../store/authStore';
 
 export const TimelinePage: React.FC = () => {
-  const { data: events = [], isLoading } = useTimeline();
+  const { profile } = useAuthStore();
+  const { entries: events = [], isLoading } = useActorTimeline(profile?.principal || null);
 
   return (
     <div className="space-y-8 max-w-4xl mx-auto">

@@ -60,6 +60,8 @@ import { persist, createJSONStorage } from 'zustand/middleware';
 import type { UserProfile, UserRole } from '../types/auth';
 import { usePortalStore } from './portalStore';
 import { useNotificationStore } from './notificationStore';
+import { recreateAgent } from '../lib/agent';
+import { recreateActor } from '../lib/canister';
 
 // ---------------------------------------------------------------------------
 // AuthAdapter Interface
@@ -107,28 +109,10 @@ export interface AuthAdapter {
 // Mock Adapter (default — used until W2 delivers nfid.ts)
 // ---------------------------------------------------------------------------
 
-const MOCK_PRINCIPAL = 'mock-patient-2vxsx-fae';
-const MOCK_SESSION_DURATION_MS = 24 * 60 * 60 * 1000; // 24 hours
-
-const mockAuthAdapter: AuthAdapter = {
-  login: async () => {
-    // Simulate network delay
-    await new Promise((r) => setTimeout(r, 800));
-    return {
-      principal: MOCK_PRINCIPAL,
-      identity: { type: 'mock' },
-      expiresAt: Date.now() + MOCK_SESSION_DURATION_MS,
-    };
-  },
-
-  logout: async () => {
-    await new Promise((r) => setTimeout(r, 200));
-  },
-
-  checkAuth: async () => {
-    // Mock: no persisted session on reload
-    return null;
-  },
+const uninitializedAdapter: AuthAdapter = {
+  login: async () => { throw new Error("Auth adapter not initialized"); },
+  logout: async () => { throw new Error("Auth adapter not initialized"); },
+  checkAuth: async () => { throw new Error("Auth adapter not initialized"); },
 };
 
 // ---------------------------------------------------------------------------
@@ -251,7 +235,7 @@ export const useAuthStore = create<AuthStore>()(
       role: null,
       sessionExpiresAt: null,
       error: null,
-      _adapter: mockAuthAdapter,
+      _adapter: uninitializedAdapter,
 
       // --- Computed (eagerly derived from state in each selector call) ---
       get isPatient() {
@@ -279,6 +263,10 @@ export const useAuthStore = create<AuthStore>()(
             principal: result.principal,
             sessionExpiresAt: result.expiresAt,
           });
+          
+          // Force recreate agent and actor with the new identity
+          await recreateAgent();
+          await recreateActor();
         } catch (err) {
           const message = err instanceof Error ? err.message : 'Login failed';
           set({ isLoading: false, error: message });
@@ -296,6 +284,10 @@ export const useAuthStore = create<AuthStore>()(
         // Clear cross-store state
         usePortalStore.getState().resetPortal();
         useNotificationStore.getState().clearAll();
+        
+        // Recreate agent and actor as anonymous
+        await recreateAgent();
+        await recreateActor();
 
         // Clear auth state
         set({
@@ -340,6 +332,10 @@ export const useAuthStore = create<AuthStore>()(
               principal: result.principal,
               sessionExpiresAt: result.expiresAt,
             });
+            
+            // Force recreate agent and actor with the new identity
+            await recreateAgent();
+            await recreateActor();
           } else {
             // No valid session found — treat as logged out
             set({

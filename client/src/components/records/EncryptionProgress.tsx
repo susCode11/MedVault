@@ -1,5 +1,5 @@
 import React from 'react';
-import { UploadProgress } from '../../../types/records';
+import { UploadProgress } from '../../types/records';
 import { Check, Loader2, AlertCircle } from 'lucide-react';
 import clsx from 'clsx';
 
@@ -8,33 +8,33 @@ interface EncryptionProgressProps {
 }
 
 export const EncryptionProgress: React.FC<EncryptionProgressProps> = ({ progress }) => {
-  const steps = ['encrypting', 'uploading', 'registering', 'complete'];
-  const currentStepIndex = steps.indexOf(progress.stage);
+  const steps = ['hashing', 'encrypting', 'pinning', 'registering'];
+  const currentStepIndex = steps.indexOf(progress.step);
 
   return (
     <div className="w-full">
       <div className="flex justify-between mb-2">
         <span className="text-sm font-medium text-gray-300 capitalize">
-          {progress.stage.replace('_', ' ')}
+          {progress.step.replace('_', ' ')}
         </span>
-        <span className="text-sm font-medium text-white">{Math.round(progress.percent)}%</span>
+        <span className="text-sm font-medium text-white">{Math.round(progress.progress)}%</span>
       </div>
       
       <div className="w-full bg-surface-dark rounded-full h-2.5 mb-6 overflow-hidden">
         <div 
           className={clsx(
             "h-2.5 rounded-full transition-all duration-300",
-            progress.stage === 'error' ? "bg-danger-500" : "bg-gradient-to-r from-primary-500 to-accent-500"
+            progress.step === 'error' ? "bg-danger-500" : "bg-gradient-to-r from-primary-500 to-accent-500"
           )}
-          style={{ width: `${progress.percent}%` }}
+          style={{ width: `${progress.progress}%` }}
         ></div>
       </div>
 
       <div className="grid grid-cols-4 gap-2">
         {steps.map((step, idx) => {
-          const isCompleted = currentStepIndex > idx || progress.stage === 'complete';
-          const isCurrent = currentStepIndex === idx && progress.stage !== 'error';
-          const isError = progress.stage === 'error' && currentStepIndex === idx;
+          const isCompleted = currentStepIndex > idx || progress.step === 'done';
+          const isCurrent = currentStepIndex === idx && progress.step !== 'error';
+          const isError = progress.step === 'error' && currentStepIndex === idx;
 
           return (
             <div key={step} className="flex flex-col items-center">
@@ -61,12 +61,9 @@ export const EncryptionProgress: React.FC<EncryptionProgressProps> = ({ progress
         })}
       </div>
       
-      {progress.message && (
-        <p className={clsx(
-          "mt-4 text-sm text-center",
-          progress.stage === 'error' ? "text-danger-400" : "text-gray-400"
-        )}>
-          {progress.message}
+      {progress.error && (
+        <p className="mt-4 text-sm text-center text-danger-400">
+          {progress.error}
         </p>
       )}
     </div>

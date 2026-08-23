@@ -4,7 +4,7 @@
 //
 // Consumed by:
 //   - useAbha.ts        (Workstream 3)
-//   - abha-mock.ts      (Workstream 2 — mock service must return these shapes)
+//   - abha-service.ts   (ABHA service abstraction)
 //   - AbhaLinkForm      (Workstream 4 — patient links their ABHA ID)
 //   - PatientLookup.tsx (Workstream 4 — doctor searches patient by ABHA ID)
 //
@@ -12,7 +12,7 @@
 //   ABHA (formerly NDHM Health ID) is India's national health identifier.
 //   Format: 14-digit number, displayed as XX-XXXX-XXXX-XXXX.
 //   In production, verification calls the NHA (National Health Authority) API.
-//   In MedVault, the mock service (abha-mock.ts) simulates these calls.
+//   In MedVault, the mock mode in abha-service.ts simulates these calls.
 // =============================================================================
 
 // ---------------------------------------------------------------------------
@@ -44,7 +44,7 @@ export type AbhaLinkStatus =
 // ---------------------------------------------------------------------------
 
 /**
- * Result of verifying an ABHA ID via abha-mock.ts verifyAbhaId().
+ * Result of verifying an ABHA ID.
  */
 export interface AbhaVerificationResult {
   /** Whether the ABHA ID exists and is valid in the NHA registry. */
@@ -160,4 +160,15 @@ export interface AbhaLinkResult {
   success: boolean;
   abhaId?: AbhaIdRaw;
   errorMessage?: string;
+}
+
+export interface AbhaProfile {
+  abhaId: string;
+  name: string;
+  gender: string;
+  dob: string;
+  address: string;
+  state: string;
+  pincode: string;
+  mobile: string;
 }

@@ -1,9 +1,9 @@
 import React from 'react';
-import { EmergencyAccessEvent } from '../../../types/emergency';
+import { EmergencyAccessEvent } from '../../types/emergency';
 import { Table, Thead, Tbody, Tr, Th, Td } from '../ui/Table';
 import { Badge } from '../ui/Badge';
 import { Button } from '../ui/Button';
-import { formatDate } from '../../../utils/format';
+import { formatDate } from '../../utils/format';
 
 interface EmergencyAuditLogProps {
   events: EmergencyAccessEvent[];
@@ -25,10 +25,9 @@ export const EmergencyAuditLog: React.FC<EmergencyAuditLogProps> = ({ events, on
       </Thead>
       <Tbody>
         {events.map((event) => {
-          const isExpired = Date.now() > event.expiresAt;
           return (
             <Tr key={event.id}>
-              <Td>{formatDate(event.accessedAt, 'MMM d, yyyy h:mm a')}</Td>
+              <Td>{formatDate(event.createdAt, 'MMM d, yyyy h:mm a')}</Td>
               <Td className="font-medium text-white">{event.doctorName}</Td>
               <Td>{event.patientName}</Td>
               <Td>
@@ -37,23 +36,25 @@ export const EmergencyAuditLog: React.FC<EmergencyAuditLogProps> = ({ events, on
                 </div>
               </Td>
               <Td>
-                {event.reported ? (
+                {event.status === 'reported' ? (
                   <Badge variant="danger">Reported</Badge>
-                ) : isExpired ? (
-                  <Badge variant="default">Expired</Badge>
+                ) : event.status === 'resolved' ? (
+                  <Badge variant="default">Resolved</Badge>
+                ) : event.status === 'acknowledged' ? (
+                  <Badge variant="warning">Acknowledged</Badge>
                 ) : (
-                  <Badge variant="warning">Active (24h)</Badge>
+                  <Badge variant="warning">Active</Badge>
                 )}
               </Td>
               <Td>
                 <Button 
                   variant="ghost" 
                   size="sm" 
-                  disabled={event.reported}
+                  disabled={event.status === 'reported' || event.status === 'resolved'}
                   onClick={() => onReportAbuse(event)}
                   className="text-danger-400 hover:text-danger-300 hover:bg-danger-500/10"
                 >
-                  {event.reported ? 'Under Review' : 'Report Abuse'}
+                  {event.status === 'reported' ? 'Under Review' : 'Report Abuse'}
                 </Button>
               </Td>
             </Tr>

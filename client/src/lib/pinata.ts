@@ -1,12 +1,14 @@
 import { PinataSDK } from 'pinata';
 
-// TODO (Workstream 4): BLANK SPACE - Environment Variables
 // Replace these mock values with real credentials from the Pinata dashboard.
 // Generate a JWT and Gateway URL at https://app.pinata.cloud/developers/api-keys
 // Then add them to client/.env.local as VITE_PINATA_JWT and VITE_PINATA_GATEWAY.
-const pinataJwt = import.meta.env?.VITE_PINATA_JWT || 'mock-jwt';
-const pinataGateway = import.meta.env?.VITE_PINATA_GATEWAY || 'mock-gateway.mypinata.cloud';
+const pinataJwt = import.meta.env?.VITE_PINATA_JWT;
+const pinataGateway = import.meta.env?.VITE_PINATA_GATEWAY;
 
+if (!pinataJwt || !pinataGateway) {
+  console.warn("VITE_PINATA_JWT or VITE_PINATA_GATEWAY is not defined. File uploads/downloads will fail.");
+}
 // --- Singleton SDK Instance ---
 
 let pinataInstance: PinataSDK | null = null;
@@ -18,12 +20,17 @@ let pinataInstance: PinataSDK | null = null;
 export function getPinata(): PinataSDK {
   if (!pinataInstance) {
     pinataInstance = new PinataSDK({
-      pinataJwt,
-      pinataGateway,
+      pinataJwt: pinataJwt === 'your_pinata_jwt_here' ? '' : pinataJwt,
+      pinataGateway: pinataGateway === 'your_pinata_gateway_here' ? '' : pinataGateway,
     });
   }
   return pinataInstance;
 }
+
+// --- Mock Storage for Prototyping ---
+// If the user hasn't set up Pinata yet, we store the encrypted blobs in memory
+// so they can still test the upload/download flows in the UI.
+const mockStorage = new Map<string, Blob>();
 
 // --- Upload ---
 
@@ -54,6 +61,14 @@ export async function uploadEncryptedBlob(
   blob: Blob,
   metadata: UploadMetadata
 ): Promise<string> {
+  if (!pinataJwt || pinataJwt === 'your_pinata_jwt_here') {
+    console.warn("[Mock] Pinata JWT is missing. Simulating upload to local memory.");
+    const cid = `mock-cid-${Date.now()}`;
+    mockStorage.set(cid, blob);
+    await new Promise(resolve => setTimeout(resolve, 1500)); // Simulate network delay
+    return cid;
+  }
+
   const pinata = getPinata();
 
   // Convert Blob to File (Pinata SDK expects a File object)
@@ -93,6 +108,20 @@ export async function uploadEncryptedBlob(
  * //   const decryptedBlob = await decryptBlob(blob, encryptionKey);
  */
 export async function fetchFromIPFS(cid: string): Promise<Blob> {
+  if (cid.startsWith('mock-cid-')) {
+    console.warn("[Mock] Simulating fetch from local memory.");
+    await new Promise(resolve => setTimeout(resolve, 800)); // Simulate network delay
+    const blob = mockStorage.get(cid);
+    if (!blob) throw new Error("Mock file not found in current session memory.");
+    return blob;
+  }
+
+  if (!pinataGateway || pinataGateway === 'your_pinata_gateway_here') {
+    console.warn("[Mock] Pinata Gateway not configured. Returning dummy encrypted blob.");
+    await new Promise(resolve => setTimeout(resolve, 800)); // Simulate network delay
+    return new Blob(["dummy encrypted data"]);
+  }
+
   const gateway = pinataGateway.startsWith('https://')
     ? pinataGateway
     : `https://${pinataGateway}`;

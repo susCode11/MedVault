@@ -22,7 +22,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useCanisterActor, CANISTER_QUERY_KEYS } from './useCanister';
 import { useAuthStore } from '../store/authStore';
 import { useNotificationStore } from '../store/notificationStore';
-import type { AccessRequest, AccessApprovalPayload, AccessDenialPayload, AccessStatus } from '../types/access';
+import type { AccessRequest, AccessApprovalPayload, AccessDenialPayload, AccessStatus, AccessGrant } from '../types/access';
 
 // ---------------------------------------------------------------------------
 // useAccessGrants
@@ -49,29 +49,24 @@ export function useAccessGrants(options?: { statusFilter?: AccessStatus | 'all' 
   const query = useQuery({
     queryKey: CANISTER_QUERY_KEYS.access.list(callerRole, callerId),
     queryFn: async () => {
-      const res = await actor.listGrants({
-        role:     callerRole,
-        callerId,
-        pageSize: 100, // Fetch all — grant lists are typically small
-        page:     1,
-      });
-      if (!res.ok) throw new Error(res.error.message);
-      return res.data.items;
+      const res = await (actor as any).listMyGrants();
+      if ('error' in res) throw new Error(res.error.message);
+      return res.ok;
     },
     enabled: isReady && !!principal && !!role,
     staleTime: 15_000,
   });
 
   // Apply optional client-side status filter
-  const grants = (query.data ?? []).filter((g) => {
+  const grants = (query.data ?? []).filter((g: AccessGrant) => {
     if (!options?.statusFilter || options.statusFilter === 'all') return true;
     return g.status === options.statusFilter;
   });
 
   // Convenience groupings for patient dashboard
-  const pendingGrants  = grants.filter((g) => g.status === 'pending');
-  const approvedGrants = grants.filter((g) => g.status === 'approved');
-  const revokedGrants  = grants.filter((g) => g.status === 'revoked');
+  const pendingGrants  = grants.filter((g: AccessGrant) => g.status === 'pending');
+  const approvedGrants = grants.filter((g: AccessGrant) => g.status === 'approved');
+  const revokedGrants  = grants.filter((g: AccessGrant) => g.status === 'revoked');
 
   return {
     grants,
@@ -108,14 +103,14 @@ export function useAccessRequest() {
     mutationFn: async (payload: AccessRequest) => {
       if (!principal || !profile) throw new Error('Not authenticated');
 
-      const res = await actor.requestAccess({
+      const res = await (actor as any).requestAccess({
         ...payload,
         doctorId:    principal,
         doctorName:  profile.displayName,
         patientName: 'Patient', // Real: fetch from ABHA lookup or canister
       });
-      if (!res.ok) throw new Error(res.error.message);
-      return res.data;
+      if ('error' in res) throw new Error(res.error.message);
+      return res.ok;
     },
     onSuccess: (grant) => {
       // Invalidate the doctor's grant list
@@ -158,9 +153,9 @@ export function useGrantActions() {
 
   const approveMutation = useMutation({
     mutationFn: async (payload: AccessApprovalPayload) => {
-      const res = await actor.approveGrant(payload);
-      if (!res.ok) throw new Error(res.error.message);
-      return res.data;
+      const res = await (actor as any).approveGrant(payload);
+      if ('error' in res) throw new Error(res.error.message);
+      return res.ok;
     },
     onSuccess: (grant) => {
       invalidateGrants();
@@ -173,9 +168,9 @@ export function useGrantActions() {
 
   const denyMutation = useMutation({
     mutationFn: async (payload: AccessDenialPayload) => {
-      const res = await actor.denyGrant(payload);
-      if (!res.ok) throw new Error(res.error.message);
-      return res.data;
+      const res = await (actor as any).denyGrant(payload);
+      if ('error' in res) throw new Error(res.error.message);
+      return res.ok;
     },
     onSuccess: () => {
       invalidateGrants();
@@ -188,9 +183,9 @@ export function useGrantActions() {
 
   const revokeMutation = useMutation({
     mutationFn: async (payload: AccessDenialPayload) => {
-      const res = await actor.revokeGrant(payload);
-      if (!res.ok) throw new Error(res.error.message);
-      return res.data;
+      const res = await (actor as any).revokeGrant(payload);
+      if ('error' in res) throw new Error(res.error.message);
+      return res.ok;
     },
     onSuccess: (grant) => {
       invalidateGrants();
@@ -231,9 +226,9 @@ export function useConsentTimeline(grantId: string | null) {
   const query = useQuery({
     queryKey: CANISTER_QUERY_KEYS.access.timeline(grantId ?? ''),
     queryFn: async () => {
-      const res = await actor.getConsentTimeline(grantId!);
-      if (!res.ok) throw new Error(res.error.message);
-      return res.data;
+      const res = await (actor as any).getConsentTimeline(grantId!);
+      if ('error' in res) throw new Error(res.error.message);
+      return res.ok;
     },
     enabled: isReady && !!grantId,
     staleTime: 30_000,

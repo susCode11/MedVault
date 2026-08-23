@@ -11,6 +11,8 @@ import { RoleGuard } from './components/auth/RoleGuard';
 import { Landing } from './pages/Landing';
 import { Login } from './pages/Login';
 import { RoleSelect } from './pages/RoleSelect';
+import { AbhaOnboarding } from './pages/AbhaOnboarding';
+import { DoctorOnboarding } from './pages/DoctorOnboarding';
 
 // Patient Pages
 import {
@@ -45,10 +47,13 @@ export function App() {
   const { theme } = usePortalStore();
 
   useEffect(() => {
+    const html = document.documentElement;
     if (theme === 'dark') {
-      document.documentElement.classList.add('dark');
+      html.classList.add('dark');
+      html.classList.remove('light');
     } else {
-      document.documentElement.classList.remove('dark');
+      html.classList.add('light');
+      html.classList.remove('dark');
     }
   }, [theme]);
 
@@ -59,6 +64,8 @@ export function App() {
         <Route path="/" element={<Landing />} />
         <Route path="/login" element={<Login />} />
         <Route path="/role-select" element={<AuthGuard><RoleSelect /></AuthGuard>} />
+        <Route path="/onboarding/abha" element={<AuthGuard><AbhaOnboarding /></AuthGuard>} />
+        <Route path="/onboarding/doctor" element={<AuthGuard><DoctorOnboarding /></AuthGuard>} />
 
         {/* Protected Routes with AppShell */}
         <Route element={<AuthGuard><AppShell /></AuthGuard>}>
@@ -83,7 +90,7 @@ export function App() {
           <Route path="/doctor/emergency" element={<RoleGuard role={['doctor']}><DoctorEmergency /></RoleGuard>} />
           <Route path="/doctor/hospital" element={<RoleGuard role={['doctor']}><DoctorHospital /></RoleGuard>} />
           <Route path="/doctor/settings" element={<RoleGuard role={['doctor']}><DoctorSettings /></RoleGuard>} />
-          <Route path="/doctor/audit" element={<RoleGuard role={['doctor', 'control']}><EmergencyAudit /></RoleGuard>} />
+          <Route path="/doctor/audit" element={<RoleGuard role={['doctor']}><EmergencyAudit /></RoleGuard>} />
 
           {/* Control/Access Routes (Shared depending on role implementation, default to patient here for simplicity, but could be either) */}
           <Route path="/control/access" element={<AccessControls />} />

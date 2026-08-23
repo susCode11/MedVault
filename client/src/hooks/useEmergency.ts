@@ -52,21 +52,16 @@ export function useEmergencyEvents() {
   const query = useQuery({
     queryKey: CANISTER_QUERY_KEYS.emergency.list(callerRole, callerId),
     queryFn: async () => {
-      const res = await actor.listEmergencyEvents({
-        role:     callerRole,
-        callerId,
-        pageSize: 50,
-        page:     1,
-      });
-      if (!res.ok) throw new Error(res.error.message);
-      return res.data.items;
+      const res = await (actor as any).listEmergencyEvents();
+      if ('error' in res) throw new Error(res.error.message);
+      return res.ok;
     },
     enabled: isReady && !!principal && !!role,
     staleTime: 10_000,
     // When patient gets new active events, surface the emergency banner
     select: (events) => {
       if (callerRole === 'patient') {
-        const activeEvents = events.filter((e) => e.status === 'active');
+        const activeEvents = events.filter((e: any) => e.status === 'active');
         if (activeEvents.length > 0) {
           const latest = activeEvents[0];
           showEmergencyBanner({
@@ -87,9 +82,9 @@ export function useEmergencyEvents() {
 
   return {
     events,
-    activeEvents:       events.filter((e) => e.status === 'active'),
-    acknowledgedEvents: events.filter((e) => e.status === 'acknowledged'),
-    reportedEvents:     events.filter((e) => e.status === 'reported'),
+    activeEvents:       events.filter((e: any) => e.status === 'active'),
+    acknowledgedEvents: events.filter((e: any) => e.status === 'acknowledged'),
+    reportedEvents:     events.filter((e: any) => e.status === 'reported'),
     totalCount:         events.length,
     isLoading:          query.isLoading,
     isError:            query.isError,
@@ -126,15 +121,15 @@ export function useTriggerEmergency() {
     mutationFn: async (payload: EmergencyAccessPayload) => {
       if (!principal || !profile) throw new Error('Not authenticated');
 
-      const res = await actor.triggerEmergency({
+      const res = await (actor as any).triggerEmergency({
         ...payload,
         doctorId:          principal,
         doctorName:        profile.displayName,
         doctorAffiliation: profile.affiliation ?? 'Unknown Institution',
         patientName:       'Patient', // Real: resolve from ABHA lookup
       });
-      if (!res.ok) throw new Error(res.error.message);
-      return res.data;
+      if ('error' in res) throw new Error(res.error.message);
+      return res.ok;
     },
     onSuccess: (event) => {
       // Invalidate both doctor and patient emergency event lists
@@ -180,9 +175,9 @@ export function useAcknowledgeEmergency() {
 
   const mutation = useMutation({
     mutationFn: async (eventId: string) => {
-      const res = await actor.acknowledgeEmergency(eventId);
-      if (!res.ok) throw new Error(res.error.message);
-      return res.data;
+      const res = await (actor as any).acknowledgeEmergency(eventId);
+      if ('error' in res) throw new Error(res.error.message);
+      return res.ok;
     },
     onSuccess: () => {
       dismissEmergencyBanner();

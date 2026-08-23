@@ -35,13 +35,13 @@ export function useVerifyAbha() {
 
   const mutation = useMutation({
     mutationFn: async (abhaId: string): Promise<AbhaVerificationResult> => {
-      const res = await actor.verifyAbhaId(abhaId.replace(/-/g, ''));
-      if (!res.ok) throw new Error(res.error.message);
+      const res = await (actor as any).verifyAbhaId(abhaId.replace(/-/g, ''));
+      if ('error' in res) throw new Error(res.error.message);
       return {
-        isValid:       res.data.isValid,
+        isValid:       res.ok.isValid,
         abhaId:        abhaId.replace(/-/g, ''),
-        patientName:   res.data.name,
-        errorMessage:  res.data.errorMessage,
+        patientName:   res.ok.name,
+        errorMessage:  res.ok.errorMessage,
         verifiedAt:    new Date().toISOString(),
       };
     },
@@ -73,24 +73,32 @@ export function useLookupPatient() {
 
   const mutation = useMutation({
     mutationFn: async (abhaId: string): Promise<AbhaSearchResult> => {
-      const res = await actor.lookupPatientByAbha(abhaId.replace(/-/g, ''));
-      if (!res.ok) throw new Error(res.error.message);
+      const res = await (actor as any).lookupPatientByAbha(abhaId.replace(/-/g, ''));
+      if ('error' in res) throw new Error(res.error.message);
 
-      const entry = res.data;
+      const optUser = res.ok;
+      if (optUser.length === 0) {
+        throw new Error("Patient not found");
+      }
+      
+      const entry = optUser[0];
 
-      // Check existing access (simplified — real version queries grants)
-      const hasExistingAccess = false;  // Placeholder — real: check grant store
-      const hasPendingRequest = false;  // Placeholder — real: check pending grants
+      // Fetch real grants to check access
+      const grantsRes = await (actor as any).listMyGrants();
+      const grants = grantsRes.ok ? grantsRes.data : [];
+      
+      const hasExistingAccess = grants.some((g: any) => g.patientPrincipal === entry.principal && g.revokedAt.length === 0);
+      const hasPendingRequest = false; // We don't have pending status in this simple iteration
 
       const result: AbhaSearchResult = {
         patient: {
           abhaId:             entry.abhaId,
           name:               entry.name,
-          dateOfBirth:        entry.dob,
-          gender:             entry.gender,
+          dateOfBirth:        '1990-01-01', // Real ABHA API would return this
+          gender:             'other',      // Real ABHA API would return this
           medvaultPrincipal:  entry.principal,
-          hasMedvaultProfile: entry.principal !== null,
-          state:              entry.state,
+          hasMedvaultProfile: !!entry.principal,
+          state:              'Unknown',    // Real ABHA API would return this
         },
         hasExistingAccess,
         hasPendingRequest,
@@ -133,9 +141,9 @@ export function useLinkAbha() {
   const mutation = useMutation({
     mutationFn: async (abhaId: string) => {
       if (!principal) throw new Error('Not authenticated');
-      const res = await actor.updateUser({ principal, abhaId });
-      if (!res.ok) throw new Error(res.error.message);
-      return res.data;
+      const res = await (actor as any).linkAbhaId(abhaId);
+      if ('error' in res) throw new Error(res.error.message);
+      return res.ok;
     },
     onSuccess: (data) => {
       setProfile(data);

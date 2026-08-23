@@ -42,12 +42,12 @@ export function useSubmitAbuseReport() {
     mutationFn: async (payload: AbuseReportPayload) => {
       if (!principal) throw new Error('Not authenticated');
 
-      const res = await actor.submitAbuseReport({
+      const res = await (actor as any).submitAbuseReport({
         ...payload,
         reporterId: principal,
       });
-      if (!res.ok) throw new Error(res.error.message);
-      return res.data;
+      if ('error' in res) throw new Error(res.error.message);
+      return res.ok;
     },
     onSuccess: () => {
       // Invalidate both reports and emergency lists, as the emergency
@@ -83,14 +83,14 @@ export function useAbuseReports() {
   const isAdmin = useAuthStore((s) => s.isAdmin);
 
   const query = useQuery({
-    queryKey: CANISTER_QUERY_KEYS.reports.list(),
+    queryKey: CANISTER_QUERY_KEYS.reports.lists(),
     queryFn: async () => {
-      const res = await actor.listAbuseReports({
+      const res = await (actor as any).listAbuseReports({
         page: 1,
         pageSize: 50,
       });
-      if (!res.ok) throw new Error(res.error.message);
-      return res.data.items;
+      if ('error' in res) throw new Error(res.error.message);
+      return res.ok?.items;
     },
     enabled: isReady && isAdmin,
     staleTime: 60_000,

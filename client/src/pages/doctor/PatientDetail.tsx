@@ -3,9 +3,29 @@ import { useParams, Link } from 'react-router-dom';
 import { Button } from '../../components/ui/Button';
 import { ArrowLeft, ShieldAlert } from 'lucide-react';
 import { RecordList } from '../../components/records/RecordList';
+import { useRecordsList } from '../../hooks/useRecords';
+import { useAccessRequest } from '../../hooks/useAccess';
+import { useNotificationStore } from '../../store/notificationStore';
 
 export const PatientDetail: React.FC = () => {
   const { id } = useParams();
+  const { records = [], isFetching: isLoading } = useRecordsList();
+  const { requestAccess, isRequesting: isPending } = useAccessRequest();
+  const { success, error: notifyError } = useNotificationStore();
+
+  const handleRequestAccess = async () => {
+    try {
+      await requestAccess({
+        patientId: id as string,
+        recordIds: [], // Request access to all records
+        requestedDurationHours: 24, // Default to 24 hour access
+        reason: 'Routine consultation',
+      });
+      success('Access request sent successfully', 'Your request is pending patient approval.');
+    } catch (e) {
+      notifyError('Failed to request access', 'An error occurred.');
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -24,13 +44,15 @@ export const PatientDetail: React.FC = () => {
       <div className="bg-warning-500/10 border border-warning-500/30 rounded-xl p-4 flex items-center justify-between">
         <div className="flex items-center space-x-3">
           <ShieldAlert className="text-warning-500" />
-          <span className="text-warning-200">You do not have access to this patient's records.</span>
+          <span className="text-warning-200">You may not have full access to this patient's records.</span>
         </div>
-        <Button variant="warning" size="sm">Request Access</Button>
+        <Button variant="outline" size="sm" onClick={handleRequestAccess} isLoading={isPending}>
+          Request Access
+        </Button>
       </div>
 
       {/* Render records if access is granted, otherwise show placeholder */}
-      <RecordList records={[]} isLoading={false} onRecordClick={() => {}} />
+      <RecordList records={records} isLoading={isLoading} onRecordClick={() => {}} />
     </div>
   );
 };

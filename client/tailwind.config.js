@@ -5,6 +5,20 @@ export default {
   theme: {
     extend: {
       colors: {
+        // Map base colors to CSS variables for dynamic theming
+        white: 'rgb(var(--color-white) / <alpha-value>)',
+        gray: {
+          100: 'rgb(var(--color-gray-100) / <alpha-value>)',
+          200: 'rgb(var(--color-gray-200) / <alpha-value>)',
+          300: 'rgb(var(--color-gray-300) / <alpha-value>)',
+          400: 'rgb(var(--color-gray-400) / <alpha-value>)',
+          500: 'rgb(var(--color-gray-500) / <alpha-value>)',
+          600: 'rgb(var(--color-gray-600) / <alpha-value>)',
+          700: 'rgb(var(--color-gray-700) / <alpha-value>)',
+          800: 'rgb(var(--color-gray-800) / <alpha-value>)',
+          900: 'rgb(var(--color-gray-900) / <alpha-value>)',
+        },
+        
         // Primary — deep teal-cyan medical palette
         primary: {
           50:  '#edfffe', 100: '#c0fffd', 200: '#81fefb',
@@ -21,11 +35,11 @@ export default {
         },
         // Surface colors for glassmorphism
         surface: {
-          dark:    '#0f1729',    // deep navy background
-          card:    '#1a2332',    // card background
-          hover:   '#243044',    // hover state
-          border:  '#2a3a52',    // border color
-          light:   '#f8fafc',    // light mode bg
+          dark:    'rgb(var(--surface-dark) / <alpha-value>)',
+          card:    'rgb(var(--surface-card) / <alpha-value>)',
+          hover:   'rgb(var(--surface-hover) / <alpha-value>)',
+          border:  'rgb(var(--surface-border) / <alpha-value>)',
+          light:   'rgb(var(--surface-light) / <alpha-value>)',
         },
         // Semantic colors
         success: { 400: '#4ade80', 500: '#22c55e', 600: '#16a34a' },

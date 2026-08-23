@@ -1,6 +1,6 @@
 import React, { useEffect } from 'react';
-import { useRecordStore } from '../../store/recordStore';
 import { useAuthStore } from '../../store/authStore';
+import { useRecordsList } from '../../hooks/useRecords';
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { RecordList } from '../../components/records/RecordList';
@@ -10,10 +10,13 @@ import { EmergencyNotification } from '../../components/emergency/EmergencyNotif
 import { MedicalRecord } from '../../types/records';
 import { Activity, ShieldAlert, Key, FileText, Plus } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { useAccessGrants } from '../../hooks/useAccess';
+import { useEmergencyEvents } from '../../hooks/useEmergency';
+import type { AccessGrant } from '../../types/access';
 
 export const PatientDashboard: React.FC = () => {
-  const { user } = useAuthStore();
-  const { records, isLoading, fetchRecords } = useRecordStore();
+  const { profile } = useAuthStore();
+  const { records, isLoading, refetch: fetchRecords } = useRecordsList();
   const [selectedRecord, setSelectedRecord] = React.useState<MedicalRecord | null>(null);
   const [isViewerOpen, setIsViewerOpen] = React.useState(false);
   const [isShareOpen, setIsShareOpen] = React.useState(false);
@@ -32,11 +35,16 @@ export const PatientDashboard: React.FC = () => {
     setIsShareOpen(true);
   };
 
+  const { grants = [] } = useAccessGrants();
+  const { events = [] } = useEmergencyEvents();
+
+  const activeGrantsCount = grants.filter((g: AccessGrant) => !g.revokedAt).length;
+
   const stats = [
     { label: 'Total Records', value: records.length, icon: <FileText size={24} className="text-primary-400" />, bg: 'bg-primary-500/10' },
-    { label: 'Active Access Grants', value: '3', icon: <Key size={24} className="text-accent-400" />, bg: 'bg-accent-500/10' },
-    { label: 'Recent Lab Results', value: records.filter(r => r.category === 'lab_report').length, icon: <Activity size={24} className="text-info-400" />, bg: 'bg-info-500/10' },
-    { label: 'Emergency Alerts', value: '1', icon: <ShieldAlert size={24} className="text-danger-400" />, bg: 'bg-danger-500/10' },
+    { label: 'Active Access Grants', value: activeGrantsCount, icon: <Key size={24} className="text-accent-400" />, bg: 'bg-accent-500/10' },
+    { label: 'Recent Lab Results', value: records.filter((r: MedicalRecord) => r.category === 'lab_report').length, icon: <Activity size={24} className="text-info-400" />, bg: 'bg-info-500/10' },
+    { label: 'Emergency Alerts', value: events.length, icon: <ShieldAlert size={24} className="text-danger-400" />, bg: 'bg-danger-500/10' },
   ];
 
   return (
@@ -45,7 +53,7 @@ export const PatientDashboard: React.FC = () => {
 
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-white mb-2">Welcome back, {user?.displayName?.split(' ')[0] || 'User'}</h1>
+          <h1 className="text-3xl font-bold text-white mb-2">Welcome back, {profile?.displayName?.split(' ')[0] || 'User'}</h1>
           <p className="text-gray-400">Here's an overview of your medical vault.</p>
         </div>
         <div className="flex gap-3">
@@ -101,7 +109,7 @@ export const PatientDashboard: React.FC = () => {
         isOpen={isShareOpen}
         onClose={() => setIsShareOpen(false)}
         record={selectedRecord || undefined}
-        patientId={user?.principalId || ''}
+        patientId={profile?.principal || ''}
       />
     </div>
   );

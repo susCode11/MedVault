@@ -116,6 +116,13 @@ export interface Session {
 // Auth State (shape of authStore)
 // ---------------------------------------------------------------------------
 
+export interface LoginOptions {
+  provider?: 'nfid' | 'internet_identity';
+  customTTL?: bigint;
+  onSuccess?: (identity: any) => void;
+  onError?: (err: Error) => void;
+}
+
 /**
  * The full authentication state managed by Zustand authStore.
  *

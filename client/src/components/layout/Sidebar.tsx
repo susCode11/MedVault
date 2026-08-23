@@ -1,7 +1,7 @@
 import React from 'react';
-import { NavLink, useLocation } from 'react-router-dom';
-import { useAuthStore } from '../../../store/authStore';
-import { usePortalStore } from '../../../store/portalStore';
+import { NavLink } from 'react-router-dom';
+import { useAuthStore } from '../../store/authStore';
+import { usePortalStore } from '../../store/portalStore';
 import { PortalSwitcher } from './PortalSwitcher';
 import clsx from 'clsx';
 import { 
@@ -12,7 +12,6 @@ import {
 export const Sidebar: React.FC = () => {
   const { role } = useAuthStore();
   const { activePortal, sidebarCollapsed } = usePortalStore();
-  const location = useLocation();
 
   // Navigation config based on role/portal
   const navItems = activePortal === 'patient' ? [
@@ -49,7 +48,7 @@ export const Sidebar: React.FC = () => {
           </div>
         ) : (
           <div className="flex items-center space-x-3">
-            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-primary-500 to-accent-500 flex items-center justify-center font-bold text-white shadow-glow">
+            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-primary-500 to-accent-500 flex items-center justify-center font-bold text-[#ffffff] shadow-glow">
               M
             </div>
             <span className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-white to-gray-400">

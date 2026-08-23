@@ -26,7 +26,6 @@ import { useAuthStore } from '../store/authStore';
 import { useNotificationStore } from '../store/notificationStore';
 import { useEncryption } from './useEncryption';
 import { useIPFS } from './useIPFS';
-import { generateFileHash } from '../utils/crypto';
 import type { UploadPayload, RecordFilter } from '../types/records';
 
 // ---------------------------------------------------------------------------
@@ -50,14 +49,14 @@ export function useRecordsList() {
   const query = useInfiniteQuery({
     queryKey: CANISTER_QUERY_KEYS.records.list(filters),
     queryFn: async ({ pageParam = 1 }) => {
-      const res = await actor.listRecords({
+      const res = await (actor as any).listRecords({
         ownerId:  principal ?? undefined,
         category: filters.category === 'all' ? undefined : filters.category,
         page:     pageParam as number,
         pageSize: PAGE_SIZE,
       });
-      if (!res.ok) throw new Error(res.error.message);
-      return res.data;
+      if ('error' in res) throw new Error(res.error.message);
+      return res.ok;
     },
     initialPageParam: 1,
     getNextPageParam: (lastPage) =>
@@ -100,9 +99,9 @@ export function useRecord(recordId: string | null) {
   const query = useQuery({
     queryKey: CANISTER_QUERY_KEYS.records.byId(recordId ?? ''),
     queryFn: async () => {
-      const res = await actor.getRecord(recordId!);
-      if (!res.ok) throw new Error(res.error.message);
-      return res.data;
+      const res = await (actor as any).getRecord(recordId!);
+      if ('error' in res) throw new Error(res.error.message);
+      return res.ok;
     },
     enabled: isReady && !!recordId,
     staleTime: 60_000,
@@ -138,7 +137,7 @@ export function useUploadRecord() {
   const { actor, isReady } = useCanisterActor();
   const queryClient        = useQueryClient();
   const principal          = useAuthStore((s) => s.principal);
-  const profile            = useAuthStore((s) => s.profile);
+
   const { encryptFile }    = useEncryption();
   const { uploadToIPFS }   = useIPFS();
   const setProgress        = useRecordStore((s) => s.setUploadProgress);
@@ -153,21 +152,14 @@ export function useUploadRecord() {
       const fileId = `${payload.file.name}-${payload.file.size}`;
 
       try {
-        // ── Step 0: Hash ───────────────────────────────────────────────────
+        // ── Step 0: Initialise ─────────────────────────────────────────────
         setProgress(fileId, {
           fileName: payload.file.name,
-          step: 'hashing',
+          step: 'encrypting',
           progress: 0,
         });
-        
-        const fileHash = await generateFileHash(payload.file);
-        
-        setProgress(fileId, { step: 'hashing', progress: 100 });
 
-        // ── Step 1: Encrypt ────────────────────────────────────────────────
-        setProgress(fileId, { step: 'encrypting', progress: 0 });
-
-        const { encryptedFile, encryptedSymmetricKey, litAccessConditions } =
+        const { encryptedFile, encryptedSymmetricKey } =
           await encryptFile(payload.file);
 
         setProgress(fileId, { step: 'encrypting', progress: 100 });
@@ -187,22 +179,16 @@ export function useUploadRecord() {
         // ── Step 3: Register on canister ───────────────────────────────────
         setProgress(fileId, { step: 'registering', progress: 0 });
 
-        const res = await actor.createRecord({
-          ownerId:               principal,
-          title:                 payload.title,
-          category:              payload.category,
-          description:           payload.description,
-          ipfsCid:               cid,
-          encryptedSymmetricKey,
-          litAccessConditions,
-          fileType:              payload.file.type || 'application/octet-stream',
-          fileSize:              payload.file.size,
-          fileHash:              fileHash,
-          tags:                  payload.tags,
-          uploadedBy:            principal,
-        });
+        const res = await (actor as any).createRecord(
+          principal,               // patientPrincipal
+          payload.title,           // title
+          payload.description,     // description
+          payload.category,        // recordType
+          cid,                     // ipfsCid
+          encryptedSymmetricKey    // encryptionKeyId
+        );
 
-        if (!res.ok) throw new Error(res.error.message);
+        if ('error' in res) throw new Error(res.error.message);
 
         setProgress(fileId, { step: 'registering', progress: 100 });
         setProgress(fileId, { step: 'done', progress: 100 });
@@ -210,7 +196,7 @@ export function useUploadRecord() {
         // ── Step 4: Cleanup ────────────────────────────────────────────────
         setTimeout(() => removeProgress(fileId), 2000);
 
-        return res.data;
+        return res.ok;
 
       } catch (err) {
         const message = err instanceof Error ? err.message : 'Upload failed';
@@ -253,8 +239,8 @@ export function useDeleteRecord() {
   const mutation = useMutation({
     mutationFn: async ({ id, ipfsCid }: { id: string; ipfsCid: string }) => {
       // Delete from canister first
-      const res = await actor.deleteRecord(id);
-      if (!res.ok) throw new Error(res.error.message);
+      const res = await (actor as any).deleteRecord(id);
+      if ('error' in res) throw new Error(res.error.message);
       // Best-effort unpin from IPFS
       await unpinFromIPFS(ipfsCid).catch(() => {/* non-fatal */});
       return { id };
@@ -301,11 +287,10 @@ export function useViewRecord(recordId: string | null) {
       // Step 1: Fetch encrypted blob from IPFS
       const encryptedBlob = await fetchFromIPFS(record.ipfsCid);
 
-      // Step 2: Decrypt via Lit Protocol
+      // Step 2: Decrypt via Web Crypto API
       const decryptedBlob = await decryptFile(
-        record.ipfsCid,
-        record.encryptedSymmetricKey,
-        record.litAccessConditions
+        encryptedBlob,
+        record.encryptedSymmetricKey
       );
 
       // Step 3: Create object URL for rendering

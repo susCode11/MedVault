@@ -8,7 +8,7 @@ export const Landing: React.FC = () => {
     <div className="min-h-screen bg-surface-dark text-gray-100 flex flex-col font-sans">
       <header className="h-20 flex items-center justify-between px-6 sm:px-12 max-w-7xl w-full mx-auto z-10">
         <div className="flex items-center space-x-3">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary-500 to-accent-500 flex items-center justify-center font-bold text-white shadow-glow">
+          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary-500 to-accent-500 flex items-center justify-center font-bold text-[#ffffff] shadow-glow">
             M
           </div>
           <span className="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-white to-gray-400">

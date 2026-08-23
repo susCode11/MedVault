@@ -1,55 +1,22 @@
-import { IDL, query, update, trap } from 'azle';
+import { IDL, query, update } from 'azle';
 import { 
     UserProfileIDL, UserProfile,
     MedicalRecordIDL, MedicalRecord,
     AccessGrantIDL, AccessGrant,
-    AuditEntryIDL, AuditEntry,
     EmergencyAccessEventIDL, EmergencyAccessEvent,
-    AbuseReportIDL, AbuseReport
+    AbuseReportIDL, AbuseReport,
+    CanisterResponseIDL, CanisterResponse
 } from './lib/types.js';
-import { 
-    usersStorage, 
-    recordsStorage, 
-    accessStorage, 
-    auditStorage, 
-    emergencyStorage, 
-    abuseReportsStorage, 
-    abhaIndexStorage 
-} from './lib/storage.js';
-import { getCallerString, isAnonymous } from './utils/principal.js';
-import { nowNanos, hoursToNanos, isExpired } from './utils/time.js';
-import { isValidAbhaNumber } from './utils/abha.js';
-import { generateUuid } from './utils/serialize.js';
+import { withResponse } from './lib/wrapper.js';
 
-function requireAuth(): string {
-    const caller = getCallerString();
-    if (isAnonymous(caller)) {
-        trap("Unauthorized: Anonymous access not allowed");
-    }
-    return caller;
-}
+import * as userCtrl from './controllers/userController.js';
+import * as recordCtrl from './controllers/recordController.js';
+import * as accessCtrl from './controllers/accessController.js';
+import * as emergencyCtrl from './controllers/emergencyController.js';
+import * as reportCtrl from './controllers/reportController.js';
 
-function requireRole(role: string): string {
-    const caller = requireAuth();
-    const user = usersStorage.get(caller);
-    if (!user || user.role !== role && user.role !== 'admin') {
-        trap(`Forbidden: Requires ${role} role`);
-    }
-    return caller;
-}
-
-function insertAudit(actorPrincipal: string, action: string, targetRecordId: string | null = null, targetPrincipal: string | null = null, details: string = "") {
-    const auditId = generateUuid();
-    auditStorage.insert(auditId, {
-        id: auditId,
-        actorPrincipal,
-        action,
-        targetRecordId: targetRecordId ? [targetRecordId] : [],
-        targetPrincipal: targetPrincipal ? [targetPrincipal] : [],
-        timestamp: nowNanos(),
-        details
-    });
-}
+const PaginatedMedicalRecordsIDL = IDL.Record({ items: IDL.Vec(MedicalRecordIDL), total: IDL.Nat32 });
+type PaginatedMedicalRecords = { items: MedicalRecord[], total: number };
 
 export default class MedVaultBackend {
     
@@ -57,159 +24,118 @@ export default class MedVaultBackend {
     // USER MANAGEMENT
     // ==========================================
     
-    @update([IDL.Text, IDL.Text, IDL.Text], UserProfileIDL)
-    registerUser(name: string, role: string, abhaId: string): UserProfile {
-        const caller = requireAuth();
-        
-        if (usersStorage.containsKey(caller)) {
-            trap("User already registered");
-        }
-        
-        if (!isValidAbhaNumber(abhaId)) {
-            trap("Invalid ABHA number format");
-        }
-        
-        if (abhaIndexStorage.containsKey(abhaId)) {
-            trap("ABHA ID already in use");
-        }
-        
-        const profile: UserProfile = {
-            principal: caller,
-            name,
-            role,
-            abhaId,
-            createdAt: nowNanos(),
-            updatedAt: nowNanos()
-        };
-        
-        usersStorage.insert(caller, profile);
-        abhaIndexStorage.insert(abhaId, caller);
-        
-        insertAudit(caller, "register_user", null, caller, `Registered as ${role}`);
-        
-        return profile;
+    @update([IDL.Text, IDL.Text, IDL.Text], CanisterResponseIDL(UserProfileIDL))
+    registerUser(name: string, role: string, abhaId: string): CanisterResponse<UserProfile> {
+        return withResponse(() => userCtrl.registerUser(name, role, abhaId));
     }
 
-    @query([], IDL.Opt(UserProfileIDL))
-    getProfile(): [UserProfile] | [] {
-        const caller = requireAuth();
-        const profile = usersStorage.get(caller);
-        return profile !== undefined ? [profile] : [];
+    @update([IDL.Text], CanisterResponseIDL(UserProfileIDL))
+    linkAbhaId(abhaId: string): CanisterResponse<UserProfile> {
+        return withResponse(() => userCtrl.linkAbhaId(abhaId));
+    }
+
+    @update([IDL.Text], CanisterResponseIDL(UserProfileIDL))
+    linkLicenseNumber(licenseNumber: string): CanisterResponse<UserProfile> {
+        return withResponse(() => userCtrl.linkLicenseNumber(licenseNumber));
+    }
+
+    @update([IDL.Text], CanisterResponseIDL(UserProfileIDL))
+    updateName(name: string): CanisterResponse<UserProfile> {
+        return withResponse(() => userCtrl.updateName(name));
+    }
+
+    @query([], CanisterResponseIDL(IDL.Opt(UserProfileIDL)))
+    getProfile(): CanisterResponse<[UserProfile] | []> {
+        return withResponse(() => userCtrl.getProfile());
+    }
+
+    @query([IDL.Text], CanisterResponseIDL(IDL.Opt(UserProfileIDL)))
+    lookupPatientByAbha(abhaId: string): CanisterResponse<[UserProfile] | []> {
+        return withResponse(() => userCtrl.lookupPatientByAbha(abhaId));
     }
 
     // ==========================================
     // RECORD MANAGEMENT
     // ==========================================
     
-    @update([IDL.Text, IDL.Text, IDL.Text, IDL.Text, IDL.Text, IDL.Text], IDL.Text)
-    createRecord(patientPrincipal: string, title: string, description: string, recordType: string, ipfsCid: string, encryptionKeyId: string): string {
-        const doctor = requireRole('doctor');
-        
-        const patient = usersStorage.get(patientPrincipal);
-        if (!patient || patient.role !== 'patient') {
-            trap("Target user is not a registered patient");
-        }
-        
-        const recordId = generateUuid();
-        const record: MedicalRecord = {
-            id: recordId,
-            patientPrincipal,
-            doctorPrincipal: doctor,
-            title,
-            description,
-            recordType,
-            ipfsCid,
-            encryptionKeyId,
-            createdAt: nowNanos(),
-            updatedAt: nowNanos()
-        };
-        
-        recordsStorage.insert(recordId, record);
-        insertAudit(doctor, "create_record", recordId, patientPrincipal, "Record created by doctor");
-        
-        return recordId;
+    @update([IDL.Text, IDL.Text, IDL.Text, IDL.Text, IDL.Text, IDL.Text], CanisterResponseIDL(IDL.Text))
+    createRecord(patientPrincipal: string, title: string, description: string, recordType: string, ipfsCid: string, encryptionKeyId: string): CanisterResponse<string> {
+        return withResponse(() => recordCtrl.createRecord(patientPrincipal, title, description, recordType, ipfsCid, encryptionKeyId));
     }
 
-    @query([IDL.Text], IDL.Opt(MedicalRecordIDL))
-    getRecord(recordId: string): [MedicalRecord] | [] {
-        const caller = requireAuth();
-        const record = recordsStorage.get(recordId);
-        
-        if (!record) return [];
-        
-        if (record.patientPrincipal !== caller && record.doctorPrincipal !== caller) {
-            // Check if there is an active access grant
-            const grants = accessStorage.values();
-            const hasAccess = grants.some(g => 
-                g.granteePrincipal === caller && 
-                g.patientPrincipal === record.patientPrincipal && 
-                (g.recordIds.includes(recordId) || g.recordIds.includes('*')) &&
-                !isExpired(g.expiresAt) &&
-                g.revokedAt.length === 0
-            );
-            if (!hasAccess && requireRole('admin') !== caller) {
-                trap("Forbidden: No access to this record");
-            }
-        }
-        
-        insertAudit(caller, "read_record", recordId, record.patientPrincipal, "Record accessed");
-        return [record];
+    @query([IDL.Text], CanisterResponseIDL(IDL.Opt(MedicalRecordIDL)))
+    getRecord(recordId: string): CanisterResponse<[MedicalRecord] | []> {
+        return withResponse(() => recordCtrl.getRecord(recordId));
     }
 
-    @query([], IDL.Vec(MedicalRecordIDL))
-    listMyRecords(): MedicalRecord[] {
-        const caller = requireAuth();
-        const user = usersStorage.get(caller);
-        if (!user) trap("User not found");
-        
-        const allRecords = recordsStorage.values();
-        if (user.role === 'patient') {
-            return allRecords.filter(r => r.patientPrincipal === caller);
-        } else if (user.role === 'doctor') {
-            return allRecords.filter(r => r.doctorPrincipal === caller);
-        }
-        return [];
+    @query([IDL.Opt(IDL.Text), IDL.Opt(IDL.Text), IDL.Nat32, IDL.Nat32], CanisterResponseIDL(PaginatedMedicalRecordsIDL))
+    listRecords(ownerIdOpt: [string] | [], categoryOpt: [string] | [], page: number, pageSize: number): CanisterResponse<PaginatedMedicalRecords> {
+        return withResponse(() => {
+            const ownerId = ownerIdOpt.length > 0 ? ownerIdOpt[0] : null;
+            const category = categoryOpt.length > 0 ? categoryOpt[0] : null;
+            return recordCtrl.listRecords(ownerId, category, page, pageSize);
+        });
+    }
+
+    @query([], CanisterResponseIDL(IDL.Vec(MedicalRecordIDL)))
+    listMyRecords(): CanisterResponse<MedicalRecord[]> {
+        return withResponse(() => recordCtrl.listRecords(null, null, 1, 1000).items);
     }
     
     // ==========================================
     // ACCESS MANAGEMENT
     // ==========================================
     
-    @update([IDL.Text, IDL.Vec(IDL.Text), IDL.Nat32], IDL.Text)
-    grantAccess(granteePrincipal: string, recordIds: string[], expiresInHours: number): string {
-        const patient = requireRole('patient');
-        
-        const grantee = usersStorage.get(granteePrincipal);
-        if (!grantee || grantee.role !== 'doctor') {
-            trap("Grantee must be a registered doctor");
-        }
-        
-        const grantId = generateUuid();
-        const grant: AccessGrant = {
-            id: grantId,
-            patientPrincipal: patient,
-            granteePrincipal,
-            recordIds,
-            expiresAt: nowNanos() + hoursToNanos(expiresInHours),
-            createdAt: nowNanos(),
-            revokedAt: []
-        };
-        
-        accessStorage.insert(grantId, grant);
-        insertAudit(patient, "grant_access", null, granteePrincipal, `Granted access for ${expiresInHours} hours`);
-        
-        return grantId;
+    @update([IDL.Text, IDL.Vec(IDL.Text), IDL.Text, IDL.Nat32], CanisterResponseIDL(IDL.Text))
+    requestAccess(patientId: string, recordIds: string[], reason: string, requestedDurationHours: number): CanisterResponse<string> {
+        return withResponse(() => accessCtrl.requestAccess(patientId, recordIds, reason, requestedDurationHours));
     }
 
-    @query([], IDL.Vec(AccessGrantIDL))
-    listMyGrants(): AccessGrant[] {
-        const caller = requireRole('patient');
-        return accessStorage.values().filter(g => g.patientPrincipal === caller && !isExpired(g.expiresAt) && g.revokedAt.length === 0);
+    @update([IDL.Text, IDL.Vec(IDL.Text), IDL.Nat32], CanisterResponseIDL(IDL.Text))
+    grantAccess(granteePrincipal: string, recordIds: string[], expiresInHours: number): CanisterResponse<string> {
+        return withResponse(() => accessCtrl.grantAccess(granteePrincipal, recordIds, expiresInHours));
     }
 
-    @query([], IDL.Vec(AccessGrantIDL))
-    listGrantedToMe(): AccessGrant[] {
-        const caller = requireRole('doctor');
-        return accessStorage.values().filter(g => g.granteePrincipal === caller && !isExpired(g.expiresAt) && g.revokedAt.length === 0);
+    @update([IDL.Text], CanisterResponseIDL(IDL.Bool))
+    revokeAccess(grantId: string): CanisterResponse<boolean> {
+        return withResponse(() => accessCtrl.revokeAccess(grantId));
+    }
+
+    @query([], CanisterResponseIDL(IDL.Vec(AccessGrantIDL)))
+    listMyGrants(): CanisterResponse<AccessGrant[]> {
+        return withResponse(() => accessCtrl.listMyGrants());
+    }
+
+    // ==========================================
+    // EMERGENCY ACCESS
+    // ==========================================
+    
+    @update([IDL.Text, IDL.Text, IDL.Text], CanisterResponseIDL(IDL.Text))
+    triggerEmergencyAccess(patientId: string, reason: string, justification: string): CanisterResponse<string> {
+        return withResponse(() => emergencyCtrl.triggerEmergencyAccess(patientId, reason, justification));
+    }
+
+    @update([IDL.Text, IDL.Text], CanisterResponseIDL(IDL.Bool))
+    resolveEmergencyAccess(eventId: string, status: string): CanisterResponse<boolean> {
+        return withResponse(() => emergencyCtrl.resolveEmergencyAccess(eventId, status));
+    }
+
+    @query([], CanisterResponseIDL(IDL.Vec(EmergencyAccessEventIDL)))
+    listEmergencyEvents(): CanisterResponse<EmergencyAccessEvent[]> {
+        return withResponse(() => emergencyCtrl.listEmergencyEvents());
+    }
+
+    // ==========================================
+    // ABUSE REPORTS
+    // ==========================================
+    
+    @update([IDL.Text, IDL.Text], CanisterResponseIDL(IDL.Text))
+    submitAbuseReport(emergencyEventId: string, reason: string): CanisterResponse<string> {
+        return withResponse(() => reportCtrl.submitAbuseReport(emergencyEventId, reason));
+    }
+
+    @query([], CanisterResponseIDL(IDL.Vec(AbuseReportIDL)))
+    listAbuseReports(): CanisterResponse<AbuseReport[]> {
+        return withResponse(() => reportCtrl.listAbuseReports());
     }
 }

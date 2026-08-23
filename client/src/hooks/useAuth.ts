@@ -115,10 +115,23 @@ export function useAuth() {
     queryKey: CANISTER_QUERY_KEYS.users.byPrincipal(principal ?? ''),
     queryFn: async () => {
       if (!actor) throw new Error("Actor not ready");
-      const res = await actor.getUser(principal!);
-      if (!res.ok) throw new Error(res.error.message);
-      setProfile(res.data);
-      return res.data;
+      const res = await (actor as any).getProfile();
+      if ('error' in res) throw new Error(res.error.message);
+      const profile = res.ok.length > 0 ? res.ok[0] : null;
+      if (!profile) {
+        setProfile(null as any);
+        return null;
+      }
+      
+      const serializedProfile = {
+        ...profile,
+        displayName: profile.name, // Map backend 'name' to frontend 'displayName'
+        createdAt: typeof profile.createdAt === 'bigint' ? new Date(Number(profile.createdAt) / 1000000).toISOString() : profile.createdAt,
+        updatedAt: typeof profile.updatedAt === 'bigint' ? new Date(Number(profile.updatedAt) / 1000000).toISOString() : profile.updatedAt,
+      };
+      
+      setProfile(serializedProfile);
+      return serializedProfile;
     },
     // Only run this query when authenticated, has a principal, and no profile yet
     enabled: isAuthenticated && !!principal && !profile && isReady,
@@ -143,19 +156,21 @@ export function useAuth() {
     mutationFn: async (input: RegisterProfileInput) => {
       if (!principal || !actor) throw new Error('Not authenticated');
 
-      const res = await actor.registerUser({
-        id: `profile-${principal}`, // Will be overwritten by backend anyway
-        principal,
-        role: input.role,
-        displayName: input.displayName,
-        abhaId: input.abhaId,
-        licenseNumber: input.licenseNumber,
-        affiliation: input.affiliation,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString()
-      });
-      if (!res.ok) throw new Error(res.error.message);
-      return res.data;
+      // The backend expects (name, role, abhaId) as positional arguments
+      const res = await (actor as any).registerUser(
+        input.displayName || principal.toString(),
+        input.role,
+        input.abhaId || ""
+      );
+      if ('error' in res) throw new Error(res.error.message);
+      
+      const profile = res.ok;
+      return {
+        ...profile,
+        displayName: profile.name,
+        createdAt: typeof profile.createdAt === 'bigint' ? new Date(Number(profile.createdAt) / 1000000).toISOString() : profile.createdAt,
+        updatedAt: typeof profile.updatedAt === 'bigint' ? new Date(Number(profile.updatedAt) / 1000000).toISOString() : profile.updatedAt,
+      };
     },
     onSuccess: (data) => {
       setProfile(data);
@@ -176,9 +191,16 @@ export function useAuth() {
     mutationFn: async (abhaId: string) => {
       if (!principal || !actor) throw new Error('Not authenticated');
 
-      const res = await actor.updateUser({ principal, abhaId });
-      if (!res.ok) throw new Error(res.error.message);
-      return res.data;
+      const res = await (actor as any).linkAbhaId(abhaId);
+      if ('error' in res) throw new Error(res.error.message);
+      
+      const profile = res.ok;
+      return {
+        ...profile,
+        displayName: profile.name,
+        createdAt: typeof profile.createdAt === 'bigint' ? new Date(Number(profile.createdAt) / 1000000).toISOString() : profile.createdAt,
+        updatedAt: typeof profile.updatedAt === 'bigint' ? new Date(Number(profile.updatedAt) / 1000000).toISOString() : profile.updatedAt,
+      };
     },
     onSuccess: (data) => {
       setProfile(data);

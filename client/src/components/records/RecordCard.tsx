@@ -1,10 +1,10 @@
 import React from 'react';
-import { MedicalRecord } from '../../../types/records';
+import { MedicalRecord } from '../../types/records';
 import { Card } from '../ui/Card';
 import { Badge } from '../ui/Badge';
-import { formatDate, formatFileSize } from '../../../utils/format';
+import { formatDate, formatFileSize } from '../../utils/format';
 import { FileText, Download, Share2, MoreVertical, ShieldCheck, Activity } from 'lucide-react';
-import { CONSTANTS } from '../../../utils/constants';
+import { CONSTANTS } from '../../utils/constants';
 import { Dropdown } from '../ui/Dropdown';
 
 interface RecordCardProps {
@@ -54,7 +54,9 @@ export const RecordCard: React.FC<RecordCardProps> = ({ record, onClick, onShare
           <span>{formatDate(record.createdAt)}</span>
           <div className="flex items-center space-x-2">
             <span>{formatFileSize(record.fileSize)}</span>
-            <ShieldCheck size={14} className="text-success-400" title="Encrypted on IPFS" />
+            <span title="Encrypted on IPFS" className="flex items-center justify-center">
+              <ShieldCheck size={14} className="text-success-400" />
+            </span>
           </div>
         </div>
       </div>

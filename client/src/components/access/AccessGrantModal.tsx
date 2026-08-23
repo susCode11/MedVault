@@ -1,11 +1,11 @@
 import React, { useState } from 'react';
-import { MedicalRecord } from '../../../types/records';
+import { MedicalRecord } from '../../types/records';
 import { Modal } from '../ui/Modal';
 import { Button } from '../ui/Button';
 import { Input } from '../ui/Input';
 import { RadioGroup } from '../ui/RadioGroup';
 import { Clock, Shield, Eye, ShieldAlert } from 'lucide-react';
-import { useNotificationStore } from '../../../store/notificationStore';
+import { useNotificationStore } from '../../store/notificationStore';
 
 interface AccessGrantModalProps {
   isOpen: boolean;
@@ -19,12 +19,12 @@ export const AccessGrantModal: React.FC<AccessGrantModalProps> = ({ isOpen, onCl
   const [targetDoctor, setTargetDoctor] = useState(doctorId || '');
   const [duration, setDuration] = useState('24');
   const [accessType, setAccessType] = useState('read');
-  const { addToast } = useNotificationStore();
+  const { success } = useNotificationStore();
 
   const handleGrant = () => {
     if (!targetDoctor) return;
     // Simulate smart contract call
-    addToast({ type: 'success', message: `Access granted to ${targetDoctor} for ${duration} hours.` });
+    success('Access Granted', `Access granted to ${targetDoctor} for ${duration} hours.`);
     onClose();
   };
 

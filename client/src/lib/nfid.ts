@@ -2,19 +2,30 @@ import { AuthClient } from '@dfinity/auth-client';
 import { Identity } from '@dfinity/agent';
 import { Principal } from '@dfinity/principal';
 import { LoginOptions } from '../types/auth';
+import {
+  DFX_NETWORK,
+  INTERNET_IDENTITY_CANISTER_ID,
+  MEDVAULT_BACKEND_CANISTER_ID,
+  APP_LOGO_URL,
+} from './env';
 
 // 7 days in nanoseconds
 const DEFAULT_MAX_TIME_TO_LIVE = BigInt(7 * 24 * 60 * 60 * 1_000_000_000);
 
+// ---------------------------------------------------------------------------
+// Configuration — no more hardcoded fallbacks
+// ---------------------------------------------------------------------------
+
 export const NFID_CONFIG = {
   appName: 'MedVault',
-  // Note: Replace with actual deployed logo URL when moving to production
-  appLogo: 'https://medvault.app/logo.png',
-  nfidProviderUrl: 'https://nfid.one/authenticate',
-  iiProviderUrl: process.env.DFX_NETWORK === 'ic'
-    ? 'https://identity.ic0.app'
-    : `http://${process.env.INTERNET_IDENTITY_CANISTER_ID || 'rdmx6-jaaaa-aaaaa-aaadq-cai'}.localhost:4943`,
-  targets: process.env.MEDVAULT_BACKEND_CANISTER_ID ? [process.env.MEDVAULT_BACKEND_CANISTER_ID] : [],
+  appLogo: APP_LOGO_URL,
+  // II 2.0 uses id.ai for production; local dev uses the local canister
+  iiProviderUrl: DFX_NETWORK === 'ic'
+    ? 'https://id.ai'
+    : INTERNET_IDENTITY_CANISTER_ID
+      ? `http://127.0.0.1:4943/?canisterId=${INTERNET_IDENTITY_CANISTER_ID}`
+      : '', // validateEnv() will warn if missing
+  targets: MEDVAULT_BACKEND_CANISTER_ID ? [MEDVAULT_BACKEND_CANISTER_ID] : [],
 };
 
 // Singleton AuthClient instance
@@ -40,40 +51,32 @@ export const getAuthClient = async (): Promise<AuthClient> => {
  */
 export const initNFID = async (): Promise<Identity> => {
   const client = await getAuthClient();
-  const isAuthenticated = await client.isAuthenticated();
-  if (isAuthenticated) {
-    return client.getIdentity();
-  }
-  return client.getIdentity(); // Returns AnonymousIdentity
+  return client.getIdentity();
 };
 
 /**
- * Triggers the login popup for NFID or Internet Identity.
+ * Triggers the login popup for Internet Identity.
+ * On devices with biometric sensors (fingerprint/face), WebAuthn will
+ * automatically prompt for biometric authentication.
  */
 export const login = async (options?: LoginOptions): Promise<Identity> => {
   const client = await getAuthClient();
 
-  const provider = options?.provider || 'nfid';
-  let identityProvider = NFID_CONFIG.nfidProviderUrl;
+  // Always use Internet Identity (biometric/passkey based)
+  const identityProvider = NFID_CONFIG.iiProviderUrl;
 
-  if (provider === 'nfid') {
-    const params = new URLSearchParams({
-      applicationName: NFID_CONFIG.appName,
-      applicationLogo: NFID_CONFIG.appLogo,
-    });
-    identityProvider = `${NFID_CONFIG.nfidProviderUrl}?${params.toString()}`;
-  } else if (provider === 'internet_identity') {
-    identityProvider = NFID_CONFIG.iiProviderUrl;
+  if (!identityProvider) {
+    throw new Error(
+      '[MedVault] Cannot login: INTERNET_IDENTITY_CANISTER_ID is not set.\n' +
+      'Run `dfx deploy` first, then check your .env file.'
+    );
   }
 
   return new Promise((resolve, reject) => {
     client.login({
       identityProvider,
       maxTimeToLive: options?.customTTL || DEFAULT_MAX_TIME_TO_LIVE,
-      // If we have canister targets, specify them for ICRC-28 delegation
-      // TODO: verify behavior on mainnet with exact canister IDs
       ...(NFID_CONFIG.targets.length > 0 ? { targets: NFID_CONFIG.targets } : {}),
-      windowOpenerFeatures: "left=calc(50vw - 262.5px),top=calc(50vh - 352.5px),width=525,height=705",
       onSuccess: () => {
         const identity = client.getIdentity();
         if (options?.onSuccess) options.onSuccess(identity);
@@ -119,4 +122,46 @@ export const getPrincipal = (): Principal | null => {
 export const isAuthenticated = async (): Promise<boolean> => {
   const client = await getAuthClient();
   return client.isAuthenticated();
+};
+
+import { AuthAdapter } from '../store/authStore';
+
+/**
+ * The real auth adapter using Internet Identity (biometric/passkey).
+ * Injected into the auth store in main.tsx.
+ */
+export const nfidAuthAdapter: AuthAdapter = {
+  login: async () => {
+    const identity = await login({ provider: 'internet_identity' });
+    const principal = identity.getPrincipal().toText();
+    
+    const expiresAt = Date.now() + Number(DEFAULT_MAX_TIME_TO_LIVE / 1_000_000n);
+
+    return {
+      principal,
+      identity,
+      expiresAt,
+    };
+  },
+
+  logout: async () => {
+    await logout();
+  },
+
+  checkAuth: async () => {
+    const client = await getAuthClient();
+    const isAuth = await client.isAuthenticated();
+    if (!isAuth) return null;
+
+    const identity = client.getIdentity();
+    const principal = identity.getPrincipal().toText();
+    
+    const expiresAt = Date.now() + 24 * 60 * 60 * 1000;
+
+    return {
+      principal,
+      identity,
+      expiresAt,
+    };
+  }
 };

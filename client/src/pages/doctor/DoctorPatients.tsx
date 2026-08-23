@@ -2,10 +2,22 @@ import React, { useState } from 'react';
 import { Card } from '../../components/ui/Card';
 import { Input } from '../../components/ui/Input';
 import { Button } from '../../components/ui/Button';
-import { Search, UserPlus } from 'lucide-react';
+import { Search } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+
 
 export const DoctorPatients: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
+  const navigate = useNavigate();
+
+
+  const handleSearch = () => {
+    if (searchQuery.trim()) {
+      // In a real app, query useCanisterActor for patient ID matching name/abha
+      // For now, redirect to the patient detail page directly simulating a hit
+      navigate(`/doctor/patients/${searchQuery}`);
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -14,21 +26,19 @@ export const DoctorPatients: React.FC = () => {
           <h1 className="text-3xl font-bold text-white mb-2">Patient Lookup</h1>
           <p className="text-gray-400">Search for patients to view their medical records.</p>
         </div>
-        <Button variant="primary" leftIcon={<UserPlus size={18} />}>
-          Register New Patient
-        </Button>
       </div>
 
       <Card className="p-6">
         <div className="flex gap-4">
-          <Input 
+          <Input
             className="flex-1"
             placeholder="Search by ABHA ID, Name, or Phone Number..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
             leftIcon={<Search size={18} />}
           />
-          <Button variant="outline">Search</Button>
+          <Button variant="outline" onClick={handleSearch}>Search</Button>
         </div>
       </Card>
 

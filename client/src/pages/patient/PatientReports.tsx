@@ -1,25 +1,24 @@
 import React, { useEffect } from 'react';
-import { useRecordStore } from '../../store/recordStore';
 import { RecordList } from '../../components/records/RecordList';
 import { RecordFilter } from '../../components/records/RecordFilter';
 import { RecordViewer } from '../../components/records/RecordViewer';
 import { MedicalRecord } from '../../types/records';
-import { useRecords } from '../../hooks/useRecords';
+import { useRecordsList, useRecordFilters } from '../../hooks/useRecords';
 
 export const PatientReports: React.FC = () => {
-  const { filters, setFilters } = useRecordStore();
+  const { filters, updateFilter } = useRecordFilters();
   const [selectedRecord, setSelectedRecord] = React.useState<MedicalRecord | null>(null);
-  const { data: records = [], isLoading } = useRecords();
+  const { records = [], isLoading } = useRecordsList();
 
   useEffect(() => {
-    return () => setFilters({ category: undefined });
-  }, [setFilters]);
+    return () => updateFilter({ category: 'all' });
+  }, [updateFilter]);
 
-  const filteredRecords = records.filter(r => {
-    if (filters.category && r.category !== filters.category) return false;
-    if (filters.search) {
-      const search = filters.search.toLowerCase();
-      return r.title.toLowerCase().includes(search) || r.description.toLowerCase().includes(search);
+  const filteredRecords = records.filter((r: MedicalRecord) => {
+    // category filtering is handled by backend, but we can double check
+    if (filters.searchQuery) {
+      const search = filters.searchQuery.toLowerCase();
+      return r.title.toLowerCase().includes(search) || (r.description?.toLowerCase().includes(search) ?? false);
     }
     return true;
   });

@@ -5,12 +5,12 @@ import { Select } from '../ui/Select';
 import { Textarea } from '../ui/Textarea';
 import { Button } from '../ui/Button';
 import { UploadCloud, File, X } from 'lucide-react';
-import { CONSTANTS } from '../../../utils/constants';
-import { formatFileSize } from '../../../utils/format';
+import { CONSTANTS } from '../../utils/constants';
+import { formatFileSize } from '../../utils/format';
 import { EncryptionProgress } from './EncryptionProgress';
-import { useRecordStore } from '../../../store/recordStore';
-import { useNotificationStore } from '../../../store/notificationStore';
-import { useUploadRecord } from '../../../hooks/useRecords';
+import { useRecordStore } from '../../store/recordStore';
+
+import { useUploadRecord } from '../../hooks/useRecords';
 
 export const UploadForm: React.FC = () => {
   const [file, setFile] = useState<File | null>(null);
@@ -20,9 +20,8 @@ export const UploadForm: React.FC = () => {
   const [hospital, setHospital] = useState('');
   
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const { uploadProgress, setUploadProgress } = useRecordStore();
-  const { addToast } = useNotificationStore();
-  const uploadRecord = useUploadRecord();
+  const { uploadProgress } = useRecordStore();
+  const { uploadRecord, isUploading } = useUploadRecord();
 
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault();
@@ -34,19 +33,16 @@ export const UploadForm: React.FC = () => {
   const handleUpload = async () => {
     if (!file || !title || !category) return;
     
-    setUploadProgress({ stage: 'encrypting', percent: 10, message: 'Generating symmetric keys...' });
-    
     try {
-      await uploadRecord.mutateAsync({
+      await uploadRecord({
         file,
-        metadata: { title, description, category, hospital }
+        title,
+        description,
+        category: category as any,
+        tags: []
       });
       
-      setUploadProgress({ stage: 'complete', percent: 100, message: 'Record securely stored.' });
-      addToast({ type: 'success', message: 'Medical record uploaded successfully' });
-      
       setTimeout(() => {
-        setUploadProgress(null);
         setFile(null);
         setTitle('');
         setDescription('');
@@ -54,17 +50,18 @@ export const UploadForm: React.FC = () => {
         setHospital('');
       }, 2000);
     } catch (error) {
-      addToast({ type: 'error', message: 'Failed to upload record' });
-      setUploadProgress(null);
+      // The hook already handles notifications and state cleanup
     }
   };
 
-  if (uploadProgress) {
+  const currentProgress = Object.values(uploadProgress)[0];
+
+  if (currentProgress) {
     return (
       <Card className="max-w-2xl mx-auto p-8 text-center animate-fade-in">
         <UploadCloud size={64} className="text-primary-500 mx-auto mb-6" />
         <h3 className="text-2xl font-bold text-white mb-8">Securing your record</h3>
-        <EncryptionProgress progress={uploadProgress} />
+        <EncryptionProgress progress={currentProgress} />
       </Card>
     );
   }
@@ -149,8 +146,8 @@ export const UploadForm: React.FC = () => {
           <Button 
             variant="primary" 
             onClick={handleUpload} 
-            disabled={!file || !title || !category || uploadRecord.isPending}
-            isLoading={uploadRecord.isPending}
+            disabled={!file || !title || !category || isUploading}
+            isLoading={isUploading}
           >
             Encrypt & Upload
           </Button>

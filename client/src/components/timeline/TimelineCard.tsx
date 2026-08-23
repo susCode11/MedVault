@@ -1,6 +1,6 @@
 import React from 'react';
 import { Card } from '../ui/Card';
-import { formatDate } from '../../../utils/format';
+import { formatDate } from '../../utils/format';
 import { FileText, ShieldAlert, Key, Activity, HeartPulse } from 'lucide-react';
 import clsx from 'clsx';
 

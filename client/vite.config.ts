@@ -1,10 +1,13 @@
+// @ts-nocheck
 import { defineConfig, loadEnv } from 'vite';
 import react from '@vitejs/plugin-react';
 import { nodePolyfills } from 'vite-plugin-node-polyfills';
 import path from 'path';
 
 export default defineConfig(({ mode }) => {
-  const env = loadEnv(mode, process.cwd(), '');
+  const rootEnv = loadEnv(mode, path.resolve(process.cwd(), '..'), '');
+  const clientEnv = loadEnv(mode, process.cwd(), '');
+  const env = { ...rootEnv, ...clientEnv };
   return {
   plugins: [react(), nodePolyfills()],
   resolve: {
@@ -22,9 +25,9 @@ export default defineConfig(({ mode }) => {
   server: {
     port: 3000,
     proxy: {
-      // TODO (Workstream 1): Update proxy target to match DFX local replica port
+      // Workstream 1: Updated proxy target to match DFX local replica port
       '/api': {
-        target: 'http://localhost:4943', 
+        target: 'http://127.0.0.1:4943', 
         changeOrigin: true,
       },
     },
@@ -37,6 +40,8 @@ export default defineConfig(({ mode }) => {
     // Pinata / IPFS env vars (Workstream 2 → 4)
     'process.env.VITE_PINATA_JWT': JSON.stringify(env.VITE_PINATA_JWT),
     'process.env.VITE_PINATA_GATEWAY': JSON.stringify(env.VITE_PINATA_GATEWAY),
+    'global': 'globalThis',
+    'process.version': JSON.stringify('v18.0.0'),
   },
   };
 });

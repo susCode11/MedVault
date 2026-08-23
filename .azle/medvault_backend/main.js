@@ -62912,12 +62912,23 @@ var StableBTreeMap2 = class {
 };
 
 // server/lib/types.ts
+var ApiErrorIDL = idl_exports2.Record({
+  code: idl_exports2.Text,
+  message: idl_exports2.Text
+});
+function CanisterResponseIDL(dataIdl) {
+  return idl_exports2.Variant({
+    ok: dataIdl,
+    error: ApiErrorIDL
+  });
+}
 var UserProfileIDL = idl_exports2.Record({
   principal: idl_exports2.Text,
   name: idl_exports2.Text,
   role: idl_exports2.Text,
   // 'patient' | 'doctor' | 'admin'
   abhaId: idl_exports2.Text,
+  licenseNumber: idl_exports2.Text,
   createdAt: idl_exports2.Nat64,
   updatedAt: idl_exports2.Nat64
 });
@@ -62971,6 +62982,28 @@ var AbuseReportIDL = idl_exports2.Record({
   createdAt: idl_exports2.Nat64
 });
 
+// server/lib/wrapper.ts
+function withResponse(fn) {
+  try {
+    return { ok: fn() };
+  } catch (e3) {
+    if (e3.name === "CanisterError") {
+      return { error: { code: e3.code, message: e3.message, details: e3.details } };
+    }
+    return { error: { code: "UNKNOWN_ERROR", message: e3.message || String(e3) } };
+  }
+}
+
+// server/lib/error.ts
+var CanisterError = class extends Error {
+  constructor(code, message, details) {
+    super(message);
+    this.code = code;
+    this.details = details;
+    this.name = "CanisterError";
+  }
+};
+
 // server/lib/storage.ts
 var usersStorage = new StableBTreeMap2(0);
 var recordsStorage = new StableBTreeMap2(1);
@@ -62988,6 +63021,31 @@ function isAnonymous(principalStr) {
   return principalStr === "2vxsx-fae";
 }
 
+// server/middleware/auth.ts
+function requireAuth() {
+  const caller = getCallerString();
+  if (isAnonymous(caller)) {
+    throw new CanisterError("UNAUTHENTICATED", "Unauthorized: Anonymous access not allowed");
+  }
+  return caller;
+}
+function requireRole(role) {
+  const caller = requireAuth();
+  const user = usersStorage.get(caller);
+  if (!user || user.role !== role && user.role !== "admin") {
+    throw new CanisterError("UNAUTHORIZED", `Forbidden: Requires ${role} role`);
+  }
+  return caller;
+}
+
+// server/utils/serialize.ts
+function generateUuid() {
+  return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, function(c2) {
+    const r3 = Math.random() * 16 | 0, v2 = c2 == "x" ? r3 : r3 & 3 | 8;
+    return v2.toString(16);
+  });
+}
+
 // server/utils/time.ts
 function nowNanos() {
   return time2();
@@ -62999,36 +63057,7 @@ function isExpired(expiresAt) {
   return nowNanos() > expiresAt;
 }
 
-// server/utils/abha.ts
-function isValidAbhaNumber(id2) {
-  const stripped = id2.replace(/[-\s]/g, "");
-  return /^\d{14}$/.test(stripped);
-}
-
-// server/utils/serialize.ts
-function generateUuid() {
-  return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, function(c2) {
-    const r3 = Math.random() * 16 | 0, v2 = c2 == "x" ? r3 : r3 & 3 | 8;
-    return v2.toString(16);
-  });
-}
-
-// server/index.ts
-function requireAuth() {
-  const caller = getCallerString();
-  if (isAnonymous(caller)) {
-    trap2("Unauthorized: Anonymous access not allowed");
-  }
-  return caller;
-}
-function requireRole(role) {
-  const caller = requireAuth();
-  const user = usersStorage.get(caller);
-  if (!user || user.role !== role && user.role !== "admin") {
-    trap2(`Forbidden: Requires ${role} role`);
-  }
-  return caller;
-}
+// server/middleware/audit.ts
 function insertAudit(actorPrincipal, action, targetRecordId = null, targetPrincipal = null, details = "") {
   const auditId = generateUuid();
   auditStorage.insert(auditId, {
@@ -63041,130 +63070,444 @@ function insertAudit(actorPrincipal, action, targetRecordId = null, targetPrinci
     details
   });
 }
-var _listGrantedToMe_dec, _listMyGrants_dec, _grantAccess_dec, _listMyRecords_dec, _getRecord_dec, _createRecord_dec, _getProfile_dec, _registerUser_dec, _init;
-_registerUser_dec = [update3([idl_exports2.Text, idl_exports2.Text, idl_exports2.Text], UserProfileIDL)], _getProfile_dec = [query3([], idl_exports2.Opt(UserProfileIDL))], _createRecord_dec = [update3([idl_exports2.Text, idl_exports2.Text, idl_exports2.Text, idl_exports2.Text, idl_exports2.Text, idl_exports2.Text], idl_exports2.Text)], _getRecord_dec = [query3([idl_exports2.Text], idl_exports2.Opt(MedicalRecordIDL))], _listMyRecords_dec = [query3([], idl_exports2.Vec(MedicalRecordIDL))], _grantAccess_dec = [update3([idl_exports2.Text, idl_exports2.Vec(idl_exports2.Text), idl_exports2.Nat32], idl_exports2.Text)], _listMyGrants_dec = [query3([], idl_exports2.Vec(AccessGrantIDL))], _listGrantedToMe_dec = [query3([], idl_exports2.Vec(AccessGrantIDL))];
+
+// server/utils/abha.ts
+function isValidAbhaNumber(id2) {
+  const stripped = id2.replace(/[-\s]/g, "");
+  return /^\d{14}$/.test(stripped);
+}
+
+// server/controllers/userController.ts
+function registerUser(name, role, abhaId) {
+  const caller = requireAuth();
+  if (usersStorage.containsKey(caller)) {
+    throw new CanisterError("VALIDATION_ERROR", "User already registered");
+  }
+  if (abhaId) {
+    if (!isValidAbhaNumber(abhaId)) {
+      throw new CanisterError("VALIDATION_ERROR", "Invalid ABHA number format");
+    }
+    if (abhaIndexStorage.containsKey(abhaId)) {
+      throw new CanisterError("VALIDATION_ERROR", "ABHA ID already in use");
+    }
+  }
+  const profile = {
+    principal: caller,
+    name,
+    role,
+    abhaId,
+    licenseNumber: "",
+    createdAt: nowNanos(),
+    updatedAt: nowNanos()
+  };
+  usersStorage.insert(caller, profile);
+  if (abhaId) {
+    abhaIndexStorage.insert(abhaId, caller);
+  }
+  insertAudit(caller, "register_user", null, caller, `Registered as ${role}`);
+  return profile;
+}
+function getProfile() {
+  const caller = requireAuth();
+  const profile = usersStorage.get(caller);
+  return profile !== void 0 ? [profile] : [];
+}
+function lookupPatientByAbha(abhaId) {
+  requireAuth();
+  const patientPrincipal = abhaIndexStorage.get(abhaId);
+  if (patientPrincipal) {
+    const profile = usersStorage.get(patientPrincipal);
+    if (profile && profile.role === "patient") {
+      return [profile];
+    }
+  }
+  return [];
+}
+function linkAbhaId(abhaId) {
+  const caller = requireAuth();
+  const profile = usersStorage.get(caller);
+  if (!profile) {
+    throw new CanisterError("NOT_FOUND", "User profile not found");
+  }
+  if (!isValidAbhaNumber(abhaId)) {
+    throw new CanisterError("VALIDATION_ERROR", "Invalid ABHA number format");
+  }
+  if (abhaIndexStorage.containsKey(abhaId)) {
+    throw new CanisterError("VALIDATION_ERROR", "ABHA ID already in use");
+  }
+  const updatedProfile = {
+    ...profile,
+    abhaId,
+    updatedAt: nowNanos()
+  };
+  usersStorage.insert(caller, updatedProfile);
+  abhaIndexStorage.insert(abhaId, caller);
+  insertAudit(caller, "link_abha", null, caller, `Linked ABHA ID: ${abhaId}`);
+  return updatedProfile;
+}
+function linkLicenseNumber(licenseNumber) {
+  const caller = requireAuth();
+  const profile = usersStorage.get(caller);
+  if (!profile) {
+    throw new CanisterError("NOT_FOUND", "User profile not found");
+  }
+  if (profile.role !== "doctor") {
+    throw new CanisterError("VALIDATION_ERROR", "Only doctors can link a license number");
+  }
+  const updatedProfile = {
+    ...profile,
+    licenseNumber,
+    updatedAt: nowNanos()
+  };
+  usersStorage.insert(caller, updatedProfile);
+  insertAudit(caller, "link_license", null, caller, `Linked NMC License: ${licenseNumber}`);
+  return updatedProfile;
+}
+function updateName(name) {
+  const caller = requireAuth();
+  const profile = usersStorage.get(caller);
+  if (!profile) {
+    throw new CanisterError("NOT_FOUND", "User profile not found");
+  }
+  if (!name || name.trim() === "") {
+    throw new CanisterError("VALIDATION_ERROR", "Name cannot be empty");
+  }
+  const updatedProfile = {
+    ...profile,
+    name: name.trim(),
+    updatedAt: nowNanos()
+  };
+  usersStorage.insert(caller, updatedProfile);
+  insertAudit(caller, "update_name", null, caller, `Updated profile name`);
+  return updatedProfile;
+}
+
+// server/controllers/recordController.ts
+function createRecord(patientPrincipal, title2, description, recordType, ipfsCid, encryptionKeyId) {
+  const caller = requireAuth();
+  const user = usersStorage.get(caller);
+  if (!user) {
+    throw new CanisterError("UNAUTHENTICATED", "User not found");
+  }
+  if (user.role !== "doctor" && user.role !== "patient" && user.role !== "admin") {
+    throw new CanisterError("UNAUTHORIZED", "Forbidden: Requires doctor or patient role");
+  }
+  if (user.role === "patient" && caller !== patientPrincipal) {
+    throw new CanisterError("UNAUTHORIZED", "Forbidden: Patients can only upload their own records");
+  }
+  const patient = usersStorage.get(patientPrincipal);
+  if (!patient || patient.role !== "patient") {
+    throw new CanisterError("VALIDATION_ERROR", "Target user is not a registered patient");
+  }
+  const recordId = generateUuid();
+  const record = {
+    id: recordId,
+    patientPrincipal,
+    doctorPrincipal: caller,
+    title: title2,
+    description,
+    recordType,
+    ipfsCid,
+    encryptionKeyId,
+    createdAt: nowNanos(),
+    updatedAt: nowNanos()
+  };
+  recordsStorage.insert(recordId, record);
+  insertAudit(caller, "create_record", recordId, patientPrincipal, `Record created by ${user.role}`);
+  return recordId;
+}
+function getRecord(recordId) {
+  const caller = requireAuth();
+  const record = recordsStorage.get(recordId);
+  if (!record) return [];
+  if (record.patientPrincipal !== caller && record.doctorPrincipal !== caller) {
+    const grants = accessStorage.values();
+    const hasAccess = grants.some(
+      (g2) => g2.granteePrincipal === caller && g2.patientPrincipal === record.patientPrincipal && (g2.recordIds.includes(recordId) || g2.recordIds.includes("*")) && !isExpired(g2.expiresAt) && g2.revokedAt.length === 0
+    );
+    if (!hasAccess && requireRole("admin") !== caller) {
+      throw new CanisterError("VALIDATION_ERROR", "Forbidden: No access to this record");
+    }
+  }
+  insertAudit(caller, "read_record", recordId, record.patientPrincipal, "Record accessed");
+  return [record];
+}
+function listRecords(ownerId = null, category = null, page = 1, pageSize = 10) {
+  const caller = requireAuth();
+  const user = usersStorage.get(caller);
+  if (!user) throw new CanisterError("VALIDATION_ERROR", "User not found");
+  let allRecords = recordsStorage.values();
+  if (user.role === "patient") {
+    allRecords = allRecords.filter((r3) => r3.patientPrincipal === caller);
+  } else if (user.role === "doctor") {
+    if (ownerId) {
+      const grants = accessStorage.values();
+      const hasAccess = grants.some(
+        (g2) => g2.granteePrincipal === caller && g2.patientPrincipal === ownerId && (g2.recordIds.includes("*") || g2.recordIds.length > 0) && // Simplified check for list
+        !isExpired(g2.expiresAt) && g2.revokedAt.length === 0
+      );
+      if (hasAccess) {
+        allRecords = allRecords.filter((r3) => r3.patientPrincipal === ownerId);
+      } else {
+        allRecords = [];
+      }
+    } else {
+      allRecords = allRecords.filter((r3) => r3.doctorPrincipal === caller);
+    }
+  } else if (user.role === "admin") {
+    if (ownerId) {
+      allRecords = allRecords.filter((r3) => r3.patientPrincipal === ownerId);
+    }
+  } else {
+    allRecords = [];
+  }
+  if (category) {
+    allRecords = allRecords.filter((r3) => r3.recordType === category);
+  }
+  allRecords.sort((a2, b3) => Number(b3.createdAt - a2.createdAt));
+  const total = allRecords.length;
+  const startIndex = (page - 1) * pageSize;
+  const items = allRecords.slice(startIndex, startIndex + pageSize);
+  return { items, total };
+}
+
+// server/controllers/accessController.ts
+function requestAccess(patientId, recordIds, reason, requestedDurationHours) {
+  const doctor = requireRole("doctor");
+  const patient = usersStorage.get(patientId);
+  if (!patient || patient.role !== "patient") {
+    throw new CanisterError("VALIDATION_ERROR", "Target user is not a registered patient");
+  }
+  const grantId = generateUuid();
+  const grant = {
+    id: grantId,
+    patientPrincipal: patientId,
+    // Requested patient
+    granteePrincipal: doctor,
+    recordIds,
+    expiresAt: nowNanos() + hoursToNanos(requestedDurationHours),
+    createdAt: nowNanos(),
+    revokedAt: []
+  };
+  accessStorage.insert(grantId, grant);
+  insertAudit(doctor, "request_access", null, patientId, `Requested access for ${requestedDurationHours} hours: ${reason}`);
+  return grantId;
+}
+function grantAccess(granteePrincipal, recordIds, expiresInHours) {
+  const patient = requireRole("patient");
+  const grantee = usersStorage.get(granteePrincipal);
+  if (!grantee || grantee.role !== "doctor") {
+    throw new CanisterError("VALIDATION_ERROR", "Grantee must be a registered doctor");
+  }
+  const grantId = generateUuid();
+  const grant = {
+    id: grantId,
+    patientPrincipal: patient,
+    granteePrincipal,
+    recordIds,
+    expiresAt: nowNanos() + hoursToNanos(expiresInHours),
+    createdAt: nowNanos(),
+    revokedAt: []
+  };
+  accessStorage.insert(grantId, grant);
+  insertAudit(patient, "grant_access", null, granteePrincipal, `Granted access for ${expiresInHours} hours`);
+  return grantId;
+}
+function revokeAccess(grantId) {
+  const patient = requireRole("patient");
+  const grant = accessStorage.get(grantId);
+  if (!grant) throw new CanisterError("VALIDATION_ERROR", "Grant not found");
+  if (grant.patientPrincipal !== patient) throw new CanisterError("VALIDATION_ERROR", "Only the patient can revoke this grant");
+  const updatedGrant = {
+    ...grant,
+    revokedAt: [nowNanos()]
+  };
+  accessStorage.insert(grantId, updatedGrant);
+  insertAudit(patient, "revoke_access", null, grant.granteePrincipal, "Access revoked");
+  return true;
+}
+function listMyGrants() {
+  const caller = requireAuth();
+  const user = usersStorage.get(caller);
+  if (!user) return [];
+  let allGrants = accessStorage.values();
+  if (user.role === "patient") {
+    return allGrants.filter((g2) => g2.patientPrincipal === caller);
+  } else if (user.role === "doctor") {
+    return allGrants.filter((g2) => g2.granteePrincipal === caller);
+  }
+  return [];
+}
+
+// server/controllers/emergencyController.ts
+function triggerEmergencyAccess(patientId, reason, justification) {
+  const doctor = requireRole("doctor");
+  const patient = usersStorage.get(patientId);
+  if (!patient || patient.role !== "patient") {
+    throw new CanisterError("VALIDATION_ERROR", "Target user is not a registered patient");
+  }
+  const eventId = generateUuid();
+  const event = {
+    id: eventId,
+    requesterPrincipal: doctor,
+    patientPrincipal: patientId,
+    reason: `${reason}: ${justification}`,
+    status: "pending",
+    createdAt: nowNanos(),
+    resolvedAt: [],
+    resolverPrincipal: []
+  };
+  emergencyStorage.insert(eventId, event);
+  insertAudit(doctor, "emergency_request", null, patientId, `Break-glass emergency access triggered`);
+  return eventId;
+}
+function resolveEmergencyAccess(eventId, status) {
+  const admin = requireRole("admin");
+  const event = emergencyStorage.get(eventId);
+  if (!event) throw new CanisterError("VALIDATION_ERROR", "Emergency event not found");
+  const updatedEvent = {
+    ...event,
+    status,
+    resolvedAt: [nowNanos()],
+    resolverPrincipal: [admin]
+  };
+  emergencyStorage.insert(eventId, updatedEvent);
+  insertAudit(admin, status === "approved" ? "emergency_approve" : "emergency_deny", null, event.requesterPrincipal, `Emergency access ${status}`);
+  return true;
+}
+function listEmergencyEvents() {
+  const caller = requireAuth();
+  const user = usersStorage.get(caller);
+  if (!user) return [];
+  const events = emergencyStorage.values();
+  if (user.role === "admin") {
+    return events;
+  } else if (user.role === "doctor") {
+    return events.filter((e3) => e3.requesterPrincipal === caller);
+  } else if (user.role === "patient") {
+    return events.filter((e3) => e3.patientPrincipal === caller);
+  }
+  return [];
+}
+
+// server/controllers/reportController.ts
+function submitAbuseReport(emergencyEventId, reason) {
+  const patient = requireRole("patient");
+  const emergencyEvent = emergencyStorage.get(emergencyEventId);
+  if (!emergencyEvent) {
+    throw new CanisterError("VALIDATION_ERROR", "Emergency event not found");
+  }
+  if (emergencyEvent.patientPrincipal !== patient) {
+    throw new CanisterError("VALIDATION_ERROR", "Only the patient can report abuse for this event");
+  }
+  const reportId = generateUuid();
+  const report = {
+    id: reportId,
+    reporterPrincipal: patient,
+    reportedPrincipal: emergencyEvent.requesterPrincipal,
+    emergencyEventId,
+    reason,
+    createdAt: nowNanos()
+  };
+  abuseReportsStorage.insert(reportId, report);
+  insertAudit(patient, "report_abuse", null, emergencyEvent.requesterPrincipal, `Reported abuse for emergency event ${emergencyEventId}`);
+  return reportId;
+}
+function listAbuseReports() {
+  requireRole("admin");
+  return abuseReportsStorage.values();
+}
+
+// server/index.ts
+var PaginatedMedicalRecordsIDL = idl_exports2.Record({ items: idl_exports2.Vec(MedicalRecordIDL), total: idl_exports2.Nat32 });
+var _listAbuseReports_dec, _submitAbuseReport_dec, _listEmergencyEvents_dec, _resolveEmergencyAccess_dec, _triggerEmergencyAccess_dec, _listMyGrants_dec, _revokeAccess_dec, _grantAccess_dec, _requestAccess_dec, _listMyRecords_dec, _listRecords_dec, _getRecord_dec, _createRecord_dec, _lookupPatientByAbha_dec, _getProfile_dec, _updateName_dec, _linkLicenseNumber_dec, _linkAbhaId_dec, _registerUser_dec, _init;
+_registerUser_dec = [update3([idl_exports2.Text, idl_exports2.Text, idl_exports2.Text], CanisterResponseIDL(UserProfileIDL))], _linkAbhaId_dec = [update3([idl_exports2.Text], CanisterResponseIDL(UserProfileIDL))], _linkLicenseNumber_dec = [update3([idl_exports2.Text], CanisterResponseIDL(UserProfileIDL))], _updateName_dec = [update3([idl_exports2.Text], CanisterResponseIDL(UserProfileIDL))], _getProfile_dec = [query3([], CanisterResponseIDL(idl_exports2.Opt(UserProfileIDL)))], _lookupPatientByAbha_dec = [query3([idl_exports2.Text], CanisterResponseIDL(idl_exports2.Opt(UserProfileIDL)))], _createRecord_dec = [update3([idl_exports2.Text, idl_exports2.Text, idl_exports2.Text, idl_exports2.Text, idl_exports2.Text, idl_exports2.Text], CanisterResponseIDL(idl_exports2.Text))], _getRecord_dec = [query3([idl_exports2.Text], CanisterResponseIDL(idl_exports2.Opt(MedicalRecordIDL)))], _listRecords_dec = [query3([idl_exports2.Opt(idl_exports2.Text), idl_exports2.Opt(idl_exports2.Text), idl_exports2.Nat32, idl_exports2.Nat32], CanisterResponseIDL(PaginatedMedicalRecordsIDL))], _listMyRecords_dec = [query3([], CanisterResponseIDL(idl_exports2.Vec(MedicalRecordIDL)))], _requestAccess_dec = [update3([idl_exports2.Text, idl_exports2.Vec(idl_exports2.Text), idl_exports2.Text, idl_exports2.Nat32], CanisterResponseIDL(idl_exports2.Text))], _grantAccess_dec = [update3([idl_exports2.Text, idl_exports2.Vec(idl_exports2.Text), idl_exports2.Nat32], CanisterResponseIDL(idl_exports2.Text))], _revokeAccess_dec = [update3([idl_exports2.Text], CanisterResponseIDL(idl_exports2.Bool))], _listMyGrants_dec = [query3([], CanisterResponseIDL(idl_exports2.Vec(AccessGrantIDL)))], _triggerEmergencyAccess_dec = [update3([idl_exports2.Text, idl_exports2.Text, idl_exports2.Text], CanisterResponseIDL(idl_exports2.Text))], _resolveEmergencyAccess_dec = [update3([idl_exports2.Text, idl_exports2.Text], CanisterResponseIDL(idl_exports2.Bool))], _listEmergencyEvents_dec = [query3([], CanisterResponseIDL(idl_exports2.Vec(EmergencyAccessEventIDL)))], _submitAbuseReport_dec = [update3([idl_exports2.Text, idl_exports2.Text], CanisterResponseIDL(idl_exports2.Text))], _listAbuseReports_dec = [query3([], CanisterResponseIDL(idl_exports2.Vec(AbuseReportIDL)))];
 var MedVaultBackend = class {
   constructor() {
     __runInitializers(_init, 5, this);
   }
   registerUser(name, role, abhaId) {
-    const caller = requireAuth();
-    if (usersStorage.containsKey(caller)) {
-      trap2("User already registered");
-    }
-    if (!isValidAbhaNumber(abhaId)) {
-      trap2("Invalid ABHA number format");
-    }
-    if (abhaIndexStorage.containsKey(abhaId)) {
-      trap2("ABHA ID already in use");
-    }
-    const profile = {
-      principal: caller,
-      name,
-      role,
-      abhaId,
-      createdAt: nowNanos(),
-      updatedAt: nowNanos()
-    };
-    usersStorage.insert(caller, profile);
-    abhaIndexStorage.insert(abhaId, caller);
-    insertAudit(caller, "register_user", null, caller, `Registered as ${role}`);
-    return profile;
+    return withResponse(() => registerUser(name, role, abhaId));
+  }
+  linkAbhaId(abhaId) {
+    return withResponse(() => linkAbhaId(abhaId));
+  }
+  linkLicenseNumber(licenseNumber) {
+    return withResponse(() => linkLicenseNumber(licenseNumber));
+  }
+  updateName(name) {
+    return withResponse(() => updateName(name));
   }
   getProfile() {
-    const caller = requireAuth();
-    const profile = usersStorage.get(caller);
-    return profile !== void 0 ? [profile] : [];
+    return withResponse(() => getProfile());
+  }
+  lookupPatientByAbha(abhaId) {
+    return withResponse(() => lookupPatientByAbha(abhaId));
   }
   createRecord(patientPrincipal, title2, description, recordType, ipfsCid, encryptionKeyId) {
-    const doctor = requireRole("doctor");
-    const patient = usersStorage.get(patientPrincipal);
-    if (!patient || patient.role !== "patient") {
-      trap2("Target user is not a registered patient");
-    }
-    const recordId = generateUuid();
-    const record = {
-      id: recordId,
-      patientPrincipal,
-      doctorPrincipal: doctor,
-      title: title2,
-      description,
-      recordType,
-      ipfsCid,
-      encryptionKeyId,
-      createdAt: nowNanos(),
-      updatedAt: nowNanos()
-    };
-    recordsStorage.insert(recordId, record);
-    insertAudit(doctor, "create_record", recordId, patientPrincipal, "Record created by doctor");
-    return recordId;
+    return withResponse(() => createRecord(patientPrincipal, title2, description, recordType, ipfsCid, encryptionKeyId));
   }
   getRecord(recordId) {
-    const caller = requireAuth();
-    const record = recordsStorage.get(recordId);
-    if (!record) return [];
-    if (record.patientPrincipal !== caller && record.doctorPrincipal !== caller) {
-      const grants = accessStorage.values();
-      const hasAccess = grants.some(
-        (g2) => g2.granteePrincipal === caller && g2.patientPrincipal === record.patientPrincipal && (g2.recordIds.includes(recordId) || g2.recordIds.includes("*")) && !isExpired(g2.expiresAt) && g2.revokedAt.length === 0
-      );
-      if (!hasAccess && requireRole("admin") !== caller) {
-        trap2("Forbidden: No access to this record");
-      }
-    }
-    insertAudit(caller, "read_record", recordId, record.patientPrincipal, "Record accessed");
-    return [record];
+    return withResponse(() => getRecord(recordId));
+  }
+  listRecords(ownerIdOpt, categoryOpt, page, pageSize) {
+    return withResponse(() => {
+      const ownerId = ownerIdOpt.length > 0 ? ownerIdOpt[0] : null;
+      const category = categoryOpt.length > 0 ? categoryOpt[0] : null;
+      return listRecords(ownerId, category, page, pageSize);
+    });
   }
   listMyRecords() {
-    const caller = requireAuth();
-    const user = usersStorage.get(caller);
-    if (!user) trap2("User not found");
-    const allRecords = recordsStorage.values();
-    if (user.role === "patient") {
-      return allRecords.filter((r3) => r3.patientPrincipal === caller);
-    } else if (user.role === "doctor") {
-      return allRecords.filter((r3) => r3.doctorPrincipal === caller);
-    }
-    return [];
+    return withResponse(() => listRecords(null, null, 1, 1e3).items);
+  }
+  requestAccess(patientId, recordIds, reason, requestedDurationHours) {
+    return withResponse(() => requestAccess(patientId, recordIds, reason, requestedDurationHours));
   }
   grantAccess(granteePrincipal, recordIds, expiresInHours) {
-    const patient = requireRole("patient");
-    const grantee = usersStorage.get(granteePrincipal);
-    if (!grantee || grantee.role !== "doctor") {
-      trap2("Grantee must be a registered doctor");
-    }
-    const grantId = generateUuid();
-    const grant = {
-      id: grantId,
-      patientPrincipal: patient,
-      granteePrincipal,
-      recordIds,
-      expiresAt: nowNanos() + hoursToNanos(expiresInHours),
-      createdAt: nowNanos(),
-      revokedAt: []
-    };
-    accessStorage.insert(grantId, grant);
-    insertAudit(patient, "grant_access", null, granteePrincipal, `Granted access for ${expiresInHours} hours`);
-    return grantId;
+    return withResponse(() => grantAccess(granteePrincipal, recordIds, expiresInHours));
+  }
+  revokeAccess(grantId) {
+    return withResponse(() => revokeAccess(grantId));
   }
   listMyGrants() {
-    const caller = requireRole("patient");
-    return accessStorage.values().filter((g2) => g2.patientPrincipal === caller && !isExpired(g2.expiresAt) && g2.revokedAt.length === 0);
+    return withResponse(() => listMyGrants());
   }
-  listGrantedToMe() {
-    const caller = requireRole("doctor");
-    return accessStorage.values().filter((g2) => g2.granteePrincipal === caller && !isExpired(g2.expiresAt) && g2.revokedAt.length === 0);
+  triggerEmergencyAccess(patientId, reason, justification) {
+    return withResponse(() => triggerEmergencyAccess(patientId, reason, justification));
+  }
+  resolveEmergencyAccess(eventId, status) {
+    return withResponse(() => resolveEmergencyAccess(eventId, status));
+  }
+  listEmergencyEvents() {
+    return withResponse(() => listEmergencyEvents());
+  }
+  submitAbuseReport(emergencyEventId, reason) {
+    return withResponse(() => submitAbuseReport(emergencyEventId, reason));
+  }
+  listAbuseReports() {
+    return withResponse(() => listAbuseReports());
   }
 };
 _init = __decoratorStart(null);
 __decorateElement(_init, 1, "registerUser", _registerUser_dec, MedVaultBackend);
+__decorateElement(_init, 1, "linkAbhaId", _linkAbhaId_dec, MedVaultBackend);
+__decorateElement(_init, 1, "linkLicenseNumber", _linkLicenseNumber_dec, MedVaultBackend);
+__decorateElement(_init, 1, "updateName", _updateName_dec, MedVaultBackend);
 __decorateElement(_init, 1, "getProfile", _getProfile_dec, MedVaultBackend);
+__decorateElement(_init, 1, "lookupPatientByAbha", _lookupPatientByAbha_dec, MedVaultBackend);
 __decorateElement(_init, 1, "createRecord", _createRecord_dec, MedVaultBackend);
 __decorateElement(_init, 1, "getRecord", _getRecord_dec, MedVaultBackend);
+__decorateElement(_init, 1, "listRecords", _listRecords_dec, MedVaultBackend);
 __decorateElement(_init, 1, "listMyRecords", _listMyRecords_dec, MedVaultBackend);
+__decorateElement(_init, 1, "requestAccess", _requestAccess_dec, MedVaultBackend);
 __decorateElement(_init, 1, "grantAccess", _grantAccess_dec, MedVaultBackend);
+__decorateElement(_init, 1, "revokeAccess", _revokeAccess_dec, MedVaultBackend);
 __decorateElement(_init, 1, "listMyGrants", _listMyGrants_dec, MedVaultBackend);
-__decorateElement(_init, 1, "listGrantedToMe", _listGrantedToMe_dec, MedVaultBackend);
+__decorateElement(_init, 1, "triggerEmergencyAccess", _triggerEmergencyAccess_dec, MedVaultBackend);
+__decorateElement(_init, 1, "resolveEmergencyAccess", _resolveEmergencyAccess_dec, MedVaultBackend);
+__decorateElement(_init, 1, "listEmergencyEvents", _listEmergencyEvents_dec, MedVaultBackend);
+__decorateElement(_init, 1, "submitAbuseReport", _submitAbuseReport_dec, MedVaultBackend);
+__decorateElement(_init, 1, "listAbuseReports", _listAbuseReports_dec, MedVaultBackend);
 __decoratorMetadata(_init, MedVaultBackend);
 
 // <stdin>

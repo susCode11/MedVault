@@ -1,8 +1,8 @@
 import React from 'react';
-import { MedicalRecord } from '../../../types/records';
+import { MedicalRecord } from '../../types/records';
 import { RecordCard } from './RecordCard';
 import { FolderOpen } from 'lucide-react';
-import { useRecordStore } from '../../../store/recordStore';
+
 import { Spinner } from '../ui/Spinner';
 
 interface RecordListProps {
@@ -13,8 +13,6 @@ interface RecordListProps {
 }
 
 export const RecordList: React.FC<RecordListProps> = ({ records, isLoading, onRecordClick, onShareClick }) => {
-  const { viewMode } = useRecordStore();
-
   if (isLoading) {
     return (
       <div className="flex flex-col items-center justify-center py-16">

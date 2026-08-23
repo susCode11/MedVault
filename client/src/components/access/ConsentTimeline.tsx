@@ -1,7 +1,7 @@
 import React from 'react';
 import { Card } from '../ui/Card';
 import { Check, X, Clock } from 'lucide-react';
-import { formatDate } from '../../../utils/format';
+import { formatDate } from '../../utils/format';
 
 interface ConsentEvent {
   id: string;
@@ -11,13 +11,43 @@ interface ConsentEvent {
   details: string;
 }
 
+import { useAccessGrants } from '../../hooks/useAccess';
+import { Loader2 } from 'lucide-react';
+import type { AccessGrant } from '../../types/access';
+
 export const ConsentTimeline: React.FC = () => {
-  // Mock data
-  const events: ConsentEvent[] = [
-    { id: '1', type: 'granted', doctorName: 'Dr. Sarah Smith', timestamp: Date.now() - 100000, details: 'Granted 24h access to All Records' },
-    { id: '2', type: 'revoked', doctorName: 'Dr. James Wilson', timestamp: Date.now() - 5000000, details: 'Manually revoked access' },
-    { id: '3', type: 'expired', doctorName: 'Dr. Emily Chen', timestamp: Date.now() - 10000000, details: '1 Week access expired' },
-  ];
+  const { grants, isLoading } = useAccessGrants();
+
+  const events: ConsentEvent[] = [];
+  
+  if (grants) {
+    grants.forEach((grant: AccessGrant) => {
+      // Add granted event
+      if (grant.status === 'approved' || grant.status === 'revoked' || grant.status === 'expired') {
+        events.push({
+          id: grant.id + '-granted',
+          type: 'granted',
+          doctorName: grant.doctorName,
+          timestamp: Number(grant.createdAt) / 1_000_000, // convert nano to ms
+          details: `Granted access to ${grant.recordIds.length === 0 ? 'All Records' : grant.recordIds.length + ' Records'}`,
+        });
+      }
+      
+      // Add revoked event
+      if (grant.status === 'revoked' && grant.revokedAt && grant.revokedAt.length > 0) {
+        events.push({
+          id: grant.id + '-revoked',
+          type: 'revoked',
+          doctorName: grant.doctorName,
+          timestamp: Number(grant.revokedAt[0]) / 1_000_000,
+          details: 'Manually revoked access',
+        });
+      }
+    });
+    
+    // Sort descending by timestamp
+    events.sort((a, b) => b.timestamp - a.timestamp);
+  }
 
   const getIcon = (type: string) => {
     switch(type) {
@@ -41,8 +71,15 @@ export const ConsentTimeline: React.FC = () => {
     <Card className="p-6">
       <h3 className="text-lg font-semibold text-white mb-6">Consent Audit Trail</h3>
       
-      <div className="relative border-l border-surface-border ml-4 space-y-8">
-        {events.map((event, idx) => (
+      {isLoading ? (
+        <div className="flex justify-center p-8">
+          <Loader2 className="animate-spin text-brand-500" />
+        </div>
+      ) : events.length === 0 ? (
+        <div className="text-gray-400 text-center py-8">No consent history found.</div>
+      ) : (
+        <div className="relative border-l border-surface-border ml-4 space-y-8">
+        {events.map((event) => (
           <div key={event.id} className="relative pl-8">
             {/* Timeline Dot */}
             <div className={`absolute -left-3.5 top-1 w-7 h-7 rounded-full flex items-center justify-center ring-4 ring-surface-card ${getColor(event.type)}`}>
@@ -58,7 +95,8 @@ export const ConsentTimeline: React.FC = () => {
             </div>
           </div>
         ))}
-      </div>
+        </div>
+      )}
     </Card>
   );
 };

@@ -1,14 +1,14 @@
 import React, { useEffect } from 'react';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
-import { useAuthStore } from '../../../store/authStore';
-import { usePortalStore } from '../../../store/portalStore';
+import { useAuthStore } from '../../store/authStore';
+import { usePortalStore } from '../../store/portalStore';
 import { Header } from './Header';
 import { Sidebar } from './Sidebar';
 import { Footer } from './Footer';
 import clsx from 'clsx';
 
 export const AppShell: React.FC = () => {
-  const { isAuthenticated, isLoading, role } = useAuthStore();
+  const { isAuthenticated, isLoading } = useAuthStore();
   const { sidebarCollapsed } = usePortalStore();
   const navigate = useNavigate();
   const location = useLocation();

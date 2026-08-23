@@ -1,13 +1,13 @@
-import React, { useState } from 'react';
-import { MedicalRecord } from '../../../types/records';
+import React, { useState, useEffect } from 'react';
+import { MedicalRecord } from '../../types/records';
 import { Modal } from '../ui/Modal';
 import { Badge } from '../ui/Badge';
 import { Button } from '../ui/Button';
-import { formatDate, formatFileSize } from '../../../utils/format';
-import { Download, Share2, FileText, Shield, Key } from 'lucide-react';
-import { CONSTANTS } from '../../../utils/constants';
-import { useNotificationStore } from '../../../store/notificationStore';
-import { useDownloadRecord } from '../../../hooks/useRecords';
+import { formatDate, formatFileSize } from '../../utils/format';
+import { Download, Share2, Shield, Key } from 'lucide-react';
+import { CONSTANTS } from '../../utils/constants';
+import { useNotificationStore } from '../../store/notificationStore';
+import { useViewRecord } from '../../hooks/useRecords';
 
 interface RecordViewerProps {
   record: MedicalRecord | null;
@@ -16,34 +16,29 @@ interface RecordViewerProps {
 }
 
 export const RecordViewer: React.FC<RecordViewerProps> = ({ record, isOpen, onClose }) => {
-  const [isDecrypting, setIsDecrypting] = useState(false);
-  const [decryptedUrl, setDecryptedUrl] = useState<string | null>(null);
-  const { addToast } = useNotificationStore();
-  const downloadRecord = useDownloadRecord();
+  const [shouldDecrypt, setShouldDecrypt] = useState(false);
+  const { error: notifyError } = useNotificationStore();
+  
+  // Only try to decrypt when shouldDecrypt is true
+  const { objectUrl, isLoading, isError, error } = useViewRecord(shouldDecrypt ? (record?.id ?? null) : null);
 
-  React.useEffect(() => {
-    // Reset state when a new record is opened
-    setDecryptedUrl(null);
-    setIsDecrypting(false);
-  }, [record?.id]);
+  useEffect(() => {
+    // Reset state when a new record is opened or closed
+    setShouldDecrypt(false);
+  }, [record?.id, isOpen]);
+
+  useEffect(() => {
+    if (isError && error) {
+      notifyError('Decryption failed', error instanceof Error ? error.message : 'Could not decrypt the record');
+      setShouldDecrypt(false);
+    }
+  }, [isError, error, notifyError]);
 
   if (!record) return null;
   const catConfig = CONSTANTS.RECORD_CATEGORIES.find(c => c.id === record.category) || CONSTANTS.RECORD_CATEGORIES[6];
 
-  const handleDecrypt = async () => {
-    setIsDecrypting(true);
-    try {
-      // For now, since hook is a stub, this will just "succeed"
-      const blob = await downloadRecord.mutateAsync(record.id);
-      
-      // For mock, just show a placeholder
-      setDecryptedUrl('data:text/html,<h1>Simulated Decrypted Content</h1>');
-      addToast({ type: 'success', message: 'Record decrypted successfully' });
-    } catch (error) {
-      addToast({ type: 'error', message: 'Decryption failed' });
-    } finally {
-      setIsDecrypting(false);
-    }
+  const handleDecrypt = () => {
+    setShouldDecrypt(true);
   };
 
   return (
@@ -51,19 +46,19 @@ export const RecordViewer: React.FC<RecordViewerProps> = ({ record, isOpen, onCl
       <div className="flex flex-col lg:flex-row gap-6 h-[600px]">
         {/* Left side: Viewer */}
         <div className="flex-1 bg-surface-dark border border-surface-border rounded-xl flex items-center justify-center relative overflow-hidden">
-          {!decryptedUrl ? (
+          {!objectUrl ? (
             <div className="text-center p-8">
               <Shield size={64} className="text-primary-500 mx-auto mb-4" />
               <h3 className="text-xl font-bold text-white mb-2">End-to-End Encrypted</h3>
               <p className="text-gray-400 max-w-md mx-auto mb-6">
                 This record is stored securely on IPFS and encrypted. You need to decrypt it locally using your access keys.
               </p>
-              <Button onClick={handleDecrypt} isLoading={isDecrypting} leftIcon={<Key size={18} />}>
+              <Button onClick={handleDecrypt} isLoading={isLoading} leftIcon={<Key size={18} />}>
                 Decrypt & View
               </Button>
             </div>
           ) : (
-            <iframe src={decryptedUrl} className="w-full h-full bg-white" title="Decrypted Document" />
+            <iframe src={objectUrl} className="w-full h-full bg-white" title="Decrypted Document" />
           )}
         </div>
 
@@ -79,10 +74,6 @@ export const RecordViewer: React.FC<RecordViewerProps> = ({ record, isOpen, onCl
               <div className="flex justify-between">
                 <span className="text-gray-500">Date</span>
                 <span className="text-white">{formatDate(record.createdAt)}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-500">Hospital</span>
-                <span className="text-white text-right">{record.hospital || 'N/A'}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-gray-500">Size</span>
@@ -106,7 +97,7 @@ export const RecordViewer: React.FC<RecordViewerProps> = ({ record, isOpen, onCl
           </div>
 
           <div className="mt-auto pt-6 flex flex-col gap-3">
-            <Button variant="outline" className="w-full" leftIcon={<Download size={18} />} disabled={!decryptedUrl}>
+            <Button variant="outline" className="w-full" leftIcon={<Download size={18} />} disabled={!objectUrl}>
               Download File
             </Button>
             <Button variant="primary" className="w-full" leftIcon={<Share2 size={18} />}>

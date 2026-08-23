@@ -1,10 +1,13 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Menu, Search, Bell, Sun, Moon } from 'lucide-react';
-import { usePortalStore } from '../../../store/portalStore';
+import { usePortalStore } from '../../store/portalStore';
+import { useNotificationStore } from '../../store/notificationStore';
 import { ProfileMenu } from '../auth/ProfileMenu';
 
 export const Header: React.FC = () => {
   const { toggleSidebar, theme, setTheme } = usePortalStore();
+  const { info } = useNotificationStore();
+  const [hasNotifications, setHasNotifications] = useState(true);
 
   return (
     <header className="h-20 flex-shrink-0 flex items-center justify-between px-6 z-10 glass-card mx-6 mt-4 border-surface-border">
@@ -36,10 +39,20 @@ export const Header: React.FC = () => {
           {theme === 'dark' ? <Sun size={20} /> : <Moon size={20} />}
         </button>
         
-        <button className="relative p-2 text-gray-400 hover:text-white hover:bg-surface-hover rounded-xl transition-colors">
+        <button 
+          onClick={() => {
+            info('No new notifications', 'You are all caught up!');
+            setHasNotifications(false);
+          }}
+          className="relative p-2 text-gray-400 hover:text-white hover:bg-surface-hover rounded-xl transition-colors"
+        >
           <Bell size={20} />
-          <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-primary-500 rounded-full animate-ping"></span>
-          <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-primary-500 rounded-full"></span>
+          {hasNotifications && (
+            <>
+              <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-primary-500 rounded-full animate-ping"></span>
+              <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-primary-500 rounded-full"></span>
+            </>
+          )}
         </button>
         
         <div className="h-8 w-px bg-surface-border mx-2"></div>

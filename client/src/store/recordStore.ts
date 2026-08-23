@@ -135,7 +135,7 @@ export type RecordStore = RecordState & RecordActions;
 
 export const useRecordStore = create<RecordStore>()(
   persist(
-    (set, get) => ({
+    (set) => ({
       // --- State ---
       filters: DEFAULT_RECORD_FILTER,
       viewMode: 'grid',

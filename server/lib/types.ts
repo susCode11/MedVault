@@ -10,6 +10,40 @@ export type AuditAction = 'create_record' | 'read_record' | 'update_record' | 'd
 export type EmergencyStatus = 'pending' | 'approved' | 'denied' | 'expired';
 
 // =========================================
+// ERROR AND RESPONSE TYPES
+// =========================================
+
+export type ApiErrorCode =
+  | 'UNAUTHENTICATED' | 'UNAUTHORIZED' | 'SESSION_EXPIRED'
+  | 'NOT_FOUND' | 'ALREADY_EXISTS' | 'CONFLICT'
+  | 'VALIDATION_ERROR' | 'INVALID_PRINCIPAL' | 'INVALID_ABHA_ID'
+  | 'ACCESS_DENIED' | 'GRANT_EXPIRED' | 'GRANT_REVOKED'
+  | 'IPFS_UPLOAD_FAILED' | 'ENCRYPTION_FAILED' | 'CANISTER_ERROR'
+  | 'NETWORK_ERROR' | 'UNKNOWN_ERROR';
+
+export type ApiError = {
+    code: string;
+    message: string;
+    details?: any;
+};
+
+export type CanisterResponse<T> = 
+    | { ok: T }
+    | { error: ApiError };
+
+export const ApiErrorIDL = IDL.Record({
+    code: IDL.Text,
+    message: IDL.Text,
+});
+
+export function CanisterResponseIDL(dataIdl: any) {
+    return IDL.Variant({
+        ok: dataIdl,
+        error: ApiErrorIDL,
+    });
+}
+
+// =========================================
 // CANDID IDL DEFINITIONS
 // =========================================
 
@@ -18,6 +52,7 @@ export const UserProfileIDL = IDL.Record({
     name: IDL.Text,
     role: IDL.Text, // 'patient' | 'doctor' | 'admin'
     abhaId: IDL.Text,
+    licenseNumber: IDL.Text,
     createdAt: IDL.Nat64,
     updatedAt: IDL.Nat64,
 });
@@ -27,6 +62,7 @@ export type UserProfile = {
     name: string;
     role: string;
     abhaId: string;
+    licenseNumber: string;
     createdAt: bigint;
     updatedAt: bigint;
 };

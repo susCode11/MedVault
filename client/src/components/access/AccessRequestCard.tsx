@@ -1,41 +1,33 @@
 import React from 'react';
-import { AccessRequest } from '../../../types/access';
+import { AccessGrant } from '../../types/access';
 import { Card, CardHeader, CardBody, CardFooter } from '../ui/Card';
 import { Button } from '../ui/Button';
-import { Clock, ShieldAlert, Check, X } from 'lucide-react';
+import { Clock, Check, X } from 'lucide-react';
 import { Avatar } from '../ui/Avatar';
-import clsx from 'clsx';
 
 interface AccessRequestCardProps {
-  request: AccessRequest;
-  onApprove: (request: AccessRequest) => void;
-  onDeny: (request: AccessRequest) => void;
+  request: AccessGrant;
+  onApprove: (request: AccessGrant) => void;
+  onDeny: (request: AccessGrant) => void;
   isDoctorView?: boolean;
 }
 
 export const AccessRequestCard: React.FC<AccessRequestCardProps> = ({ request, onApprove, onDeny, isDoctorView = false }) => {
-  const isEmergency = request.accessType === 'emergency';
-  
   return (
-    <Card className={clsx(isEmergency ? "border-danger-500/50 shadow-glow" : "")}>
+    <Card>
       <CardHeader className="flex justify-between items-start">
         <div className="flex items-center space-x-3">
-          <Avatar name={isDoctorView ? request.patientId : request.doctorId} size="md" />
+          <Avatar name={isDoctorView ? request.patientName || request.patientId : request.doctorName || request.doctorId} size="md" />
           <div>
             <h4 className="font-medium text-white">
-              {isDoctorView ? 'Patient: ' + request.patientId : 'Dr. ' + request.doctorId}
+              {isDoctorView ? 'Patient: ' + (request.patientName || request.patientId) : 'Dr. ' + (request.doctorName || request.doctorId)}
             </h4>
             <div className="flex items-center text-xs text-gray-400 mt-1">
               <Clock size={12} className="mr-1" />
-              <span>Requested {request.durationHours} hours access</span>
+              <span>Requested Access</span>
             </div>
           </div>
         </div>
-        {isEmergency && (
-          <div className="flex items-center text-danger-400 text-xs font-semibold px-2 py-1 bg-danger-500/10 rounded-lg">
-            <ShieldAlert size={14} className="mr-1" /> Emergency
-          </div>
-        )}
       </CardHeader>
       
       <CardBody>

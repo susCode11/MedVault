@@ -1,10 +1,21 @@
 service: () -> {
-    createRecord: (text, text, text, text, text, text) -> (text);
-    getProfile: () -> (opt record {"principal":text; name:text; createdAt:nat64; role:text; abhaId:text; updatedAt:nat64}) query;
-    getRecord: (text) -> (opt record {id:text; title:text; encryptionKeyId:text; createdAt:nat64; description:text; recordType:text; updatedAt:nat64; patientPrincipal:text; doctorPrincipal:text; ipfsCid:text}) query;
-    grantAccess: (text, vec text, nat32) -> (text);
-    listGrantedToMe: () -> (vec record {id:text; expiresAt:nat64; createdAt:nat64; granteePrincipal:text; patientPrincipal:text; recordIds:vec text; revokedAt:opt nat64}) query;
-    listMyGrants: () -> (vec record {id:text; expiresAt:nat64; createdAt:nat64; granteePrincipal:text; patientPrincipal:text; recordIds:vec text; revokedAt:opt nat64}) query;
-    listMyRecords: () -> (vec record {id:text; title:text; encryptionKeyId:text; createdAt:nat64; description:text; recordType:text; updatedAt:nat64; patientPrincipal:text; doctorPrincipal:text; ipfsCid:text}) query;
-    registerUser: (text, text, text) -> (record {"principal":text; name:text; createdAt:nat64; role:text; abhaId:text; updatedAt:nat64});
+    createRecord: (text, text, text, text, text, text) -> (variant {ok:text; error:record {code:text; message:text}});
+    getProfile: () -> (variant {ok:opt record {"principal":text; name:text; createdAt:nat64; role:text; abhaId:text; updatedAt:nat64; licenseNumber:text}; error:record {code:text; message:text}}) query;
+    getRecord: (text) -> (variant {ok:opt record {id:text; title:text; encryptionKeyId:text; createdAt:nat64; description:text; recordType:text; updatedAt:nat64; patientPrincipal:text; doctorPrincipal:text; ipfsCid:text}; error:record {code:text; message:text}}) query;
+    grantAccess: (text, vec text, nat32) -> (variant {ok:text; error:record {code:text; message:text}});
+    linkAbhaId: (text) -> (variant {ok:record {"principal":text; name:text; createdAt:nat64; role:text; abhaId:text; updatedAt:nat64; licenseNumber:text}; error:record {code:text; message:text}});
+    linkLicenseNumber: (text) -> (variant {ok:record {"principal":text; name:text; createdAt:nat64; role:text; abhaId:text; updatedAt:nat64; licenseNumber:text}; error:record {code:text; message:text}});
+    listAbuseReports: () -> (variant {ok:vec record {id:text; reportedPrincipal:text; emergencyEventId:text; createdAt:nat64; reporterPrincipal:text; reason:text}; error:record {code:text; message:text}}) query;
+    listEmergencyEvents: () -> (variant {ok:vec record {id:text; status:text; resolverPrincipal:opt text; createdAt:nat64; patientPrincipal:text; resolvedAt:opt nat64; requesterPrincipal:text; reason:text}; error:record {code:text; message:text}}) query;
+    listMyGrants: () -> (variant {ok:vec record {id:text; expiresAt:nat64; createdAt:nat64; granteePrincipal:text; patientPrincipal:text; recordIds:vec text; revokedAt:opt nat64}; error:record {code:text; message:text}}) query;
+    listMyRecords: () -> (variant {ok:vec record {id:text; title:text; encryptionKeyId:text; createdAt:nat64; description:text; recordType:text; updatedAt:nat64; patientPrincipal:text; doctorPrincipal:text; ipfsCid:text}; error:record {code:text; message:text}}) query;
+    listRecords: (opt text, opt text, nat32, nat32) -> (variant {ok:record {total:nat32; items:vec record {id:text; title:text; encryptionKeyId:text; createdAt:nat64; description:text; recordType:text; updatedAt:nat64; patientPrincipal:text; doctorPrincipal:text; ipfsCid:text}}; error:record {code:text; message:text}}) query;
+    lookupPatientByAbha: (text) -> (variant {ok:opt record {"principal":text; name:text; createdAt:nat64; role:text; abhaId:text; updatedAt:nat64; licenseNumber:text}; error:record {code:text; message:text}}) query;
+    registerUser: (text, text, text) -> (variant {ok:record {"principal":text; name:text; createdAt:nat64; role:text; abhaId:text; updatedAt:nat64; licenseNumber:text}; error:record {code:text; message:text}});
+    requestAccess: (text, vec text, text, nat32) -> (variant {ok:text; error:record {code:text; message:text}});
+    resolveEmergencyAccess: (text, text) -> (variant {ok:bool; error:record {code:text; message:text}});
+    revokeAccess: (text) -> (variant {ok:bool; error:record {code:text; message:text}});
+    submitAbuseReport: (text, text) -> (variant {ok:text; error:record {code:text; message:text}});
+    triggerEmergencyAccess: (text, text, text) -> (variant {ok:text; error:record {code:text; message:text}});
+    updateName: (text) -> (variant {ok:record {"principal":text; name:text; createdAt:nat64; role:text; abhaId:text; updatedAt:nat64; licenseNumber:text}; error:record {code:text; message:text}});
 }

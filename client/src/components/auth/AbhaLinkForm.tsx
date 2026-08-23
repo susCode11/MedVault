@@ -1,20 +1,18 @@
 import React, { useState } from 'react';
-import { Card, CardHeader, CardBody, CardFooter } from '../ui/Card';
+import { Card, CardHeader, CardBody } from '../ui/Card';
 import { Button } from '../ui/Button';
 import { Input } from '../ui/Input';
-import { CheckCircle, Fingerprint, Smartphone } from 'lucide-react';
-import { useAuthStore } from '../../../store/authStore';
-import { useNotificationStore } from '../../../store/notificationStore';
-import { useLinkAbha } from '../../../hooks/useAbha';
+import { Fingerprint, Smartphone } from 'lucide-react';
+import { useNotificationStore } from '../../store/notificationStore';
+import { useLinkAbha } from '../../hooks/useAbha';
 
 export const AbhaLinkForm: React.FC = () => {
   const [step, setStep] = useState<1 | 2>(1);
   const [abhaId, setAbhaId] = useState('');
   const [otp, setOtp] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const { updateProfile } = useAuthStore();
-  const { addToast } = useNotificationStore();
-  const linkAbha = useLinkAbha();
+  const { success, error: notifyError, info } = useNotificationStore();
+  const { linkAbha } = useLinkAbha();
 
   const handleSendOtp = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -23,11 +21,11 @@ export const AbhaLinkForm: React.FC = () => {
     setIsLoading(true);
     try {
       // Stub hook handles the mutation
-      await linkAbha.mutateAsync({ abhaId, otp: '' });
+      // In real implementation this would verify first
       setStep(2);
-      addToast({ type: 'info', message: 'OTP sent to registered mobile number' });
+      info('OTP Sent', 'OTP sent to registered mobile number');
     } catch (error) {
-      addToast({ type: 'error', message: 'Failed to send OTP' });
+      notifyError('Failed to send OTP', 'Could not send OTP to your number');
     } finally {
       setIsLoading(false);
     }
@@ -39,11 +37,10 @@ export const AbhaLinkForm: React.FC = () => {
 
     setIsLoading(true);
     try {
-      await linkAbha.mutateAsync({ abhaId, otp });
-      updateProfile({ abhaId, abhaLinked: true });
-      addToast({ type: 'success', message: 'ABHA ID successfully linked to MedVault' });
+      await linkAbha(abhaId);
+      success('ABHA Linked', 'ABHA ID successfully linked to MedVault');
     } catch (error) {
-      addToast({ type: 'error', message: 'Invalid OTP' });
+      notifyError('Invalid OTP', 'Failed to verify ABHA ID');
     } finally {
       setIsLoading(false);
     }

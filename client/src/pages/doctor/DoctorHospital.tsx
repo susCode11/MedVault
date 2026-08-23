@@ -1,6 +1,6 @@
 import React from 'react';
 import { Card } from '../../components/ui/Card';
-import { Building2, Users } from 'lucide-react';
+import { Building2 } from 'lucide-react';
 
 export const DoctorHospital: React.FC = () => {
   return (

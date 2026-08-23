@@ -14,7 +14,13 @@ export const RoleSelect: React.FC = () => {
   const handleContinue = () => {
     if (selectedRole) {
       setRole(selectedRole);
-      navigate(`/${selectedRole}/dashboard`);
+      if (selectedRole === 'patient') {
+        navigate('/onboarding/abha');
+      } else if (selectedRole === 'doctor') {
+        navigate('/onboarding/doctor');
+      } else {
+        navigate(`/${selectedRole}/dashboard`);
+      }
     }
   };
 
@@ -41,11 +47,11 @@ export const RoleSelect: React.FC = () => {
             )}>
               <div className={clsx(
                 "w-20 h-20 rounded-full mx-auto flex items-center justify-center mb-6 transition-colors",
-                selectedRole === 'patient' ? "bg-primary-500 text-white" : "bg-surface-hover text-gray-400"
+                selectedRole === 'patient' ? "bg-primary-500 text-[#ffffff]" : "bg-surface-hover text-gray-400"
               )}>
                 <Shield size={40} />
               </div>
-              <h3 className="text-2xl font-bold text-white mb-3">Patient</h3>
+              <h3 className="text-2xl font-bold text-[#ffffff] mb-3">Patient</h3>
               <p className="text-gray-400">Store your medical records securely, manage who has access, and connect your ABHA ID.</p>
             </Card>
           </div>
@@ -64,11 +70,11 @@ export const RoleSelect: React.FC = () => {
             )}>
               <div className={clsx(
                 "w-20 h-20 rounded-full mx-auto flex items-center justify-center mb-6 transition-colors",
-                selectedRole === 'doctor' ? "bg-accent-500 text-white" : "bg-surface-hover text-gray-400"
+                selectedRole === 'doctor' ? "bg-accent-500 text-[#ffffff]" : "bg-surface-hover text-gray-400"
               )}>
                 <Stethoscope size={40} />
               </div>
-              <h3 className="text-2xl font-bold text-white mb-3">Doctor / Clinic</h3>
+              <h3 className="text-2xl font-bold text-[#ffffff] mb-3">Doctor / Clinic</h3>
               <p className="text-gray-400">Request access to patient records, write prescriptions, and use emergency break-glass protocols.</p>
             </Card>
           </div>

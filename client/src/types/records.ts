@@ -9,10 +9,10 @@
 //   - recordController.ts on the canister  (Workstream 1 must mirror in Candid)
 //
 // ENCRYPTION MODEL:
-//   The file itself is encrypted by Lit Protocol (client/src/lib/lit.ts) before
-//   being uploaded to IPFS via Pinata (client/src/lib/pinata.ts).
+//   The file itself is encrypted using Web Crypto API (AES-256-GCM) (client/src/lib/crypto.ts)
+//   before being uploaded to IPFS via Pinata (client/src/lib/pinata.ts).
 //   Only the IPFS CID of the *encrypted* blob is stored on the canister,
-//   along with the Lit access condition metadata needed to decrypt it.
+//   along with the symmetric key (encrypted or managed by the backend).
 // =============================================================================
 
 // ---------------------------------------------------------------------------
@@ -68,16 +68,10 @@ export interface MedicalRecord {
   ipfsCid: string;
 
   /**
-   * The symmetric key encrypted by Lit Protocol.
-   * Stored here so Lit can re-encrypt it for newly granted doctors.
+   * The base64 symmetric key + IV used for AES-GCM encryption.
+   * Format: base64(key):base64(iv)
    */
   encryptedSymmetricKey: string;
-
-  /**
-   * Lit Protocol access conditions — defines who can decrypt.
-   * Encoded as a JSON string for canister storage compatibility.
-   */
-  litAccessConditions: string;
 
   // --- File metadata ---
   /** SHA-256 hash of the original file for integrity checks. */
@@ -104,12 +98,11 @@ export interface MedicalRecord {
 
 /**
  * Stripped record metadata — returned to **granted doctors**.
- * Does NOT include `encryptedSymmetricKey` or `litAccessConditions`.
- * The doctor must request decryption through Lit Protocol separately.
+ * Does NOT include `encryptedSymmetricKey`.
  */
 export type RecordMetadata = Omit<
   MedicalRecord,
-  'encryptedSymmetricKey' | 'litAccessConditions'
+  'encryptedSymmetricKey'
 >;
 
 // ---------------------------------------------------------------------------

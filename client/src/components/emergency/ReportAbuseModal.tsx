@@ -1,11 +1,10 @@
 import React, { useState } from 'react';
-import { EmergencyAccessEvent } from '../../../types/emergency';
+import { EmergencyAccessEvent } from '../../types/emergency';
 import { Modal } from '../ui/Modal';
 import { Button } from '../ui/Button';
 import { Textarea } from '../ui/Textarea';
 import { ShieldAlert } from 'lucide-react';
-import { useNotificationStore } from '../../../store/notificationStore';
-import { useReportAbuse } from '../../../hooks/useReport';
+import { useSubmitAbuseReport } from '../../hooks/useReport';
 
 interface ReportAbuseModalProps {
   isOpen: boolean;
@@ -15,8 +14,7 @@ interface ReportAbuseModalProps {
 
 export const ReportAbuseModal: React.FC<ReportAbuseModalProps> = ({ isOpen, onClose, event }) => {
   const [reason, setReason] = useState('');
-  const { addToast } = useNotificationStore();
-  const reportAbuse = useReportAbuse();
+  const { submitReport, isSubmitting } = useSubmitAbuseReport();
 
   if (!event) return null;
 
@@ -24,11 +22,10 @@ export const ReportAbuseModal: React.FC<ReportAbuseModalProps> = ({ isOpen, onCl
     if (!reason) return;
     
     try {
-      await reportAbuse.mutateAsync({ eventId: event.id, reason });
-      addToast({ type: 'success', message: 'Abuse report submitted for investigation.' });
+      await submitReport({ emergencyEventId: event.id, description: reason });
       onClose();
     } catch (error) {
-      addToast({ type: 'error', message: 'Failed to submit report' });
+      // hook handles errors
     }
   };
 
@@ -39,7 +36,7 @@ export const ReportAbuseModal: React.FC<ReportAbuseModalProps> = ({ isOpen, onCl
           <ShieldAlert size={24} className="text-danger-400 shrink-0 mt-1" />
           <div className="text-sm">
             <h4 className="font-semibold text-danger-400 mb-1">Investigation Notice</h4>
-            <p className="text-danger-200">You are reporting the emergency access by <span className="font-semibold text-white">{event.doctorName}</span> on {new Date(event.accessedAt).toLocaleDateString()}. This report will be reviewed by the hospital administration and regulatory bodies.</p>
+            <p className="text-danger-200">You are reporting the emergency access by <span className="font-semibold text-white">{event.doctorName}</span> on {new Date(event.createdAt).toLocaleDateString()}. This report will be reviewed by the hospital administration and regulatory bodies.</p>
           </div>
         </div>
 
@@ -52,10 +49,10 @@ export const ReportAbuseModal: React.FC<ReportAbuseModalProps> = ({ isOpen, onCl
         />
 
         <div className="pt-4 flex justify-end space-x-3 border-t border-surface-border">
-          <Button variant="ghost" onClick={onClose} disabled={reportAbuse.isPending}>
+          <Button variant="ghost" onClick={onClose} disabled={isSubmitting}>
             Cancel
           </Button>
-          <Button variant="danger" onClick={handleSubmit} isLoading={reportAbuse.isPending} disabled={!reason}>
+          <Button variant="danger" onClick={handleSubmit} isLoading={isSubmitting} disabled={!reason}>
             Submit Report
           </Button>
         </div>

@@ -156,15 +156,6 @@ const makeRecord = (
   description,
   ipfsCid: `Qm${id.replace(/-/g, '').toUpperCase().padEnd(44, '0')}`,
   encryptedSymmetricKey: `enc-key-${id}`,
-  litAccessConditions: JSON.stringify({
-    conditionType: 'evmBasic',
-    contractAddress: '',
-    standardContractType: '',
-    chain: 'ethereum',
-    method: '',
-    parameters: [':userAddress'],
-    returnValueTest: { comparator: '=', value: `owner-${id}` },
-  }),
   fileType,
   fileSize: fileSizeMB * 1024 * 1024,
   tags,
@@ -193,7 +184,7 @@ export const MOCK_RECORDS: MedicalRecord[] = [
 /** Stripped metadata versions (for granted doctors) */
 export const MOCK_RECORD_METADATA: RecordMetadata[] = MOCK_RECORDS.map(
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  ({ encryptedSymmetricKey, litAccessConditions, ...meta }) => meta
+  ({ encryptedSymmetricKey, ...meta }) => meta
 );
 
 // ---------------------------------------------------------------------------

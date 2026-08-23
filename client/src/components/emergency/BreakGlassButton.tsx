@@ -10,7 +10,7 @@ interface BreakGlassButtonProps {
 export const BreakGlassButton: React.FC<BreakGlassButtonProps> = ({ onActivate, disabled }) => {
   const [isPressing, setIsPressing] = useState(false);
   const [progress, setProgress] = useState(0);
-  const timerRef = useRef<NodeJS.Timeout | null>(null);
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const HOLD_DURATION = 3000; // 3 seconds to break glass
   const INTERVAL = 50;

@@ -1,21 +1,21 @@
 import React from 'react';
 import { LinkedProviders } from '../../components/access/LinkedProviders';
 import { AccessRequestCard } from '../../components/access/AccessRequestCard';
-import { AccessRequest } from '../../types/access';
+import { AccessGrant } from '../../types/access';
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
-import { useAccessRequests, useGrantAccess } from '../../hooks/useAccess';
+import { useAccessGrants, useGrantActions } from '../../hooks/useAccess';
 
 export const AccessControls: React.FC = () => {
-  const { data: pendingRequests = [], isLoading } = useAccessRequests('patient');
-  const grantAccess = useGrantAccess();
+  const { pendingGrants: pendingRequests = [] } = useAccessGrants({ statusFilter: 'all' });
+  const { approveGrant, denyGrant } = useGrantActions();
 
-  const handleApprove = async (request: AccessRequest) => {
-    await grantAccess.mutateAsync({ requestId: request.id, approved: true });
+  const handleApprove = async (request: AccessGrant) => {
+    await approveGrant({ grantId: request.id, expiresAt: null });
   };
 
-  const handleDeny = async (request: AccessRequest) => {
-    await grantAccess.mutateAsync({ requestId: request.id, approved: false });
+  const handleDeny = async (request: AccessGrant) => {
+    await denyGrant({ grantId: request.id });
   };
 
   return (
@@ -37,12 +37,12 @@ export const AccessControls: React.FC = () => {
         
         {pendingRequests.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {pendingRequests.map(req => (
+            {pendingRequests.map((req: AccessGrant) => (
               <AccessRequestCard 
                 key={req.id} 
-                request={req} 
-                onApprove={handleApprove} 
-                onDeny={handleDeny} 
+                request={req as any} 
+                onApprove={() => handleApprove(req)} 
+                onDeny={() => handleDeny(req)} 
               />
             ))}
           </div>

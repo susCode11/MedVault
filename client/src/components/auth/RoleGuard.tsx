@@ -1,7 +1,6 @@
 import React from 'react';
-import { Navigate, useLocation } from 'react-router-dom';
-import { useAuthStore } from '../../../store/authStore';
-import { UserRole } from '../../../types/auth';
+import { useAuthStore } from '../../store/authStore';
+import { UserRole } from '../../types/auth';
 import { Card } from '../ui/Card';
 import { ShieldAlert } from 'lucide-react';
 import { Button } from '../ui/Button';
@@ -13,10 +12,22 @@ interface RoleGuardProps {
 }
 
 export const RoleGuard: React.FC<RoleGuardProps> = ({ role, children }) => {
-  const { role: userRole } = useAuthStore();
+  const { role: userRole, profile } = useAuthStore();
   const navigate = useNavigate();
 
   const isAllowed = Array.isArray(role) ? role.includes(userRole as UserRole) : userRole === role;
+
+  // Enforce onboarding checks for protected routes
+  if (isAllowed && profile) {
+    if (userRole === 'patient' && !profile.abhaId) {
+      navigate('/onboarding/abha', { replace: true });
+      return null;
+    }
+    if (userRole === 'doctor' && !(profile as any).licenseNumber) {
+      navigate('/onboarding/doctor', { replace: true });
+      return null;
+    }
+  }
 
   if (!isAllowed) {
     return (

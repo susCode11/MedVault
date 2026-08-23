@@ -1,5 +1,5 @@
 import React from 'react';
-import { usePortalStore } from '../../../store/portalStore';
+import { usePortalStore } from '../../store/portalStore';
 import { Shield, Stethoscope } from 'lucide-react';
 import clsx from 'clsx';
 import { useNavigate } from 'react-router-dom';

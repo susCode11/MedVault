@@ -36,13 +36,13 @@ export function useEntityTimeline(entityId: string | null) {
   const query = useInfiniteQuery({
     queryKey: CANISTER_QUERY_KEYS.audit.byEntity(entityId ?? ''),
     queryFn: async ({ pageParam = 1 }) => {
-      const res = await actor.listAuditEntries({
+      const res = await (actor as any).listAuditEntries({
         entityId: entityId!,
         page: pageParam as number,
         pageSize: PAGE_SIZE,
       });
-      if (!res.ok) throw new Error(res.error.message);
-      return res.data;
+      if ('error' in res) throw new Error(res.error.message);
+      return res.ok;
     },
     initialPageParam: 1,
     getNextPageParam: (lastPage) =>
@@ -86,13 +86,13 @@ export function useActorTimeline(actorId: string | null) {
   const query = useInfiniteQuery({
     queryKey: CANISTER_QUERY_KEYS.audit.byActor(actorId ?? ''),
     queryFn: async ({ pageParam = 1 }) => {
-      const res = await actor.listAuditEntries({
+      const res = await (actor as any).listAuditEntries({
         actorId: actorId!,
         page: pageParam as number,
         pageSize: PAGE_SIZE,
       });
-      if (!res.ok) throw new Error(res.error.message);
-      return res.data;
+      if ('error' in res) throw new Error(res.error.message);
+      return res.ok;
     },
     initialPageParam: 1,
     getNextPageParam: (lastPage) =>

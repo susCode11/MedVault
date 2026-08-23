@@ -34,6 +34,9 @@ interface PortalState {
    * NOT persisted — reset on every page load.
    */
   previousPortal: Portal | null;
+  
+  sidebarCollapsed: boolean;
+  theme: string;
 }
 
 interface PortalActions {
@@ -54,6 +57,9 @@ interface PortalActions {
    * Called by authStore.logout() to clean up cross-store state.
    */
   resetPortal: () => void;
+
+  toggleSidebar: () => void;
+  setTheme: (theme: string) => void;
 }
 
 export type PortalStore = PortalState & PortalActions;
@@ -68,6 +74,8 @@ export const usePortalStore = create<PortalStore>()(
       // --- State ---
       activePortal: 'patient',
       previousPortal: null,
+      sidebarCollapsed: false,
+      theme: 'dark',
 
       // --- Actions ---
       switchPortal: (portal) => {
@@ -86,12 +94,20 @@ export const usePortalStore = create<PortalStore>()(
       resetPortal: () => {
         set({ activePortal: 'patient', previousPortal: null });
       },
+      
+      toggleSidebar: () => {
+        set({ sidebarCollapsed: !get().sidebarCollapsed });
+      },
+      
+      setTheme: (theme) => {
+        set({ theme });
+      }
     }),
     {
       name: 'medvault-portal',
       storage: createJSONStorage(() => localStorage),
       // Only persist activePortal — previousPortal is ephemeral UI state
-      partialize: (state) => ({ activePortal: state.activePortal }),
+      partialize: (state) => ({ activePortal: state.activePortal, theme: state.theme, sidebarCollapsed: state.sidebarCollapsed }),
     }
   )
 );

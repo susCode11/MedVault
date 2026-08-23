@@ -3,23 +3,35 @@ import { useAuthStore } from '../../store/authStore';
 import { Card } from '../../components/ui/Card';
 import { Users, ShieldAlert, Key, Activity } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
+import { useAccessGrants } from '../../hooks/useAccess';
+import { useEmergencyEvents } from '../../hooks/useEmergency';
+import type { AccessGrant } from '../../types/access';
 
 export const DoctorDashboard: React.FC = () => {
-  const { user } = useAuthStore();
+  const { profile } = useAuthStore();
   const navigate = useNavigate();
 
+  // Fetch real data from canister
+  const { grants = [] } = useAccessGrants();
+  const { events = [] } = useEmergencyEvents();
+
+  // Calculate unique patients the doctor has access to
+  const uniquePatients = new Set(grants.map((g: AccessGrant) => g.patientId)).size;
+  const pendingRequests = grants.filter((g: AccessGrant) => !g.revokedAt).length; // Simplify since backend doesn't have status yet
+  const emergencyCount = events.length;
+
   const stats = [
-    { label: 'Active Patients', value: '24', icon: <Users size={24} className="text-primary-400" />, bg: 'bg-primary-500/10', path: '/doctor/patients' },
-    { label: 'Pending Access Requests', value: '5', icon: <Key size={24} className="text-accent-400" />, bg: 'bg-accent-500/10', path: '/doctor/request' },
-    { label: 'Emergency Interventions', value: '1', icon: <ShieldAlert size={24} className="text-danger-400" />, bg: 'bg-danger-500/10', path: '/doctor/emergency' },
-    { label: 'Recent Updates', value: '12', icon: <Activity size={24} className="text-info-400" />, bg: 'bg-info-500/10', path: '/doctor/patients' },
+    { label: 'Active Patients', value: uniquePatients.toString(), icon: <Users size={24} className="text-primary-400" />, bg: 'bg-primary-500/10', path: '/doctor/patients' },
+    { label: 'Access Grants', value: pendingRequests.toString(), icon: <Key size={24} className="text-accent-400" />, bg: 'bg-accent-500/10', path: '/doctor/request' },
+    { label: 'Emergency Interventions', value: emergencyCount.toString(), icon: <ShieldAlert size={24} className="text-danger-400" />, bg: 'bg-danger-500/10', path: '/doctor/emergency' },
+    { label: 'Recent Updates', value: '0', icon: <Activity size={24} className="text-info-400" />, bg: 'bg-info-500/10', path: '/doctor/patients' },
   ];
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-8 animate-scale-in">
       <div>
-        <h1 className="text-3xl font-bold text-white mb-2">Doctor Portal</h1>
-        <p className="text-gray-400">Welcome, Dr. {user?.displayName?.split(' ')[0] || 'Doctor'}. Here's your clinical overview.</p>
+        <h1 className="text-3xl font-bold text-white mb-2">Welcome, {profile?.displayName || 'Doctor'}</h1>
+        <p className="text-gray-400">Here's your clinic overview for today.</p>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -57,7 +69,7 @@ export const DoctorDashboard: React.FC = () => {
             <Link to="/doctor/request" className="text-sm text-accent-400 hover:text-accent-300">Manage</Link>
           </div>
           <div className="text-center text-gray-500 py-12">
-            No pending access requests.
+            {grants.length === 0 ? "No pending access requests." : `${grants.length} access records found.`}
           </div>
         </Card>
       </div>
