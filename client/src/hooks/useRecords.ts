@@ -26,7 +26,25 @@ import { useAuthStore } from '../store/authStore';
 import { useNotificationStore } from '../store/notificationStore';
 import { useEncryption } from './useEncryption';
 import { useIPFS } from './useIPFS';
-import type { UploadPayload, RecordFilter } from '../types/records';
+import type { UploadPayload, RecordFilter, MedicalRecord } from '../types/records';
+
+function mapBackendRecord(raw: any): MedicalRecord {
+  return {
+    id: raw.id,
+    ownerId: raw.patientPrincipal,
+    title: raw.title,
+    category: raw.recordType,
+    description: raw.description,
+    ipfsCid: raw.ipfsCid,
+    encryptedSymmetricKey: raw.encryptionKeyId,
+    fileType: 'application/octet-stream', // Fallback, not stored on backend
+    fileSize: 0, // Fallback, not stored on backend
+    tags: [], // Fallback, not stored on backend
+    uploadedBy: raw.doctorPrincipal || raw.patientPrincipal,
+    createdAt: new Date(Number(raw.createdAt) / 1000000).toISOString(),
+    updatedAt: new Date(Number(raw.updatedAt) / 1000000).toISOString(),
+  };
+}
 
 // ---------------------------------------------------------------------------
 // useRecordsList
@@ -49,14 +67,21 @@ export function useRecordsList() {
   const query = useInfiniteQuery({
     queryKey: CANISTER_QUERY_KEYS.records.list(filters),
     queryFn: async ({ pageParam = 1 }) => {
-      const res = await (actor as any).listRecords({
-        ownerId:  principal ?? undefined,
-        category: filters.category === 'all' ? undefined : filters.category,
-        page:     pageParam as number,
-        pageSize: PAGE_SIZE,
-      });
+      const ownerId = principal;
+      const category = filters.category === 'all' ? null : filters.category;
+      
+      const res = await (actor as any).listRecords(
+        ownerId ? [ownerId] : [],
+        category ? [category] : [],
+        pageParam as number,
+        PAGE_SIZE
+      );
       if ('error' in res) throw new Error(res.error.message);
-      return res.ok;
+      
+      return {
+        ...res.ok,
+        items: res.ok.items.map(mapBackendRecord)
+      };
     },
     initialPageParam: 1,
     getNextPageParam: (lastPage) =>
@@ -101,7 +126,7 @@ export function useRecord(recordId: string | null) {
     queryFn: async () => {
       const res = await (actor as any).getRecord(recordId!);
       if ('error' in res) throw new Error(res.error.message);
-      return res.ok;
+      return res.ok.length > 0 ? mapBackendRecord(res.ok[0]) : null;
     },
     enabled: isReady && !!recordId,
     staleTime: 60_000,

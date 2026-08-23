@@ -1,7 +1,5 @@
 import React, { useEffect, useState } from 'react';
 import { Button } from '../ui/Button';
-import { useAuthStore } from '../../store/authStore';
-import { useNavigate } from 'react-router-dom';
 import { Fingerprint, ScanFace, KeyRound } from 'lucide-react';
 
 import { useAuth } from '../../hooks/useAuth';
@@ -48,7 +46,6 @@ const BIOMETRIC_CONFIG: Record<BiometricCapability, { icon: React.ReactNode; lab
 
 export const LoginButton: React.FC = () => {
   const { login, isLoading } = useAuth();
-  const navigate = useNavigate();
   const [biometric, setBiometric] = useState<BiometricCapability>('passkey');
 
   useEffect(() => {
@@ -57,13 +54,6 @@ export const LoginButton: React.FC = () => {
 
   const handleLogin = async () => {
     await login();
-    
-    const userRole = useAuthStore.getState().role;
-    if (!userRole) {
-      navigate('/role-select');
-    } else {
-      navigate(`/${userRole}/dashboard`);
-    }
   };
 
   const config = BIOMETRIC_CONFIG[biometric];

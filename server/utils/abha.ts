@@ -9,3 +9,7 @@ export function formatAbhaDisplay(id: string): string {
     
     return `${stripped.slice(0, 2)}-${stripped.slice(2, 6)}-${stripped.slice(6, 10)}-${stripped.slice(10, 14)}`;
 }
+
+export function normalizeAbha(id: string): string {
+    return id.replace(/[-\s]/g, '');
+}

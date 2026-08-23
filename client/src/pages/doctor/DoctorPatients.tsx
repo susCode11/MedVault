@@ -4,18 +4,37 @@ import { Input } from '../../components/ui/Input';
 import { Button } from '../../components/ui/Button';
 import { Search } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-
+import { useCanisterActor } from '../../hooks/useCanister';
+import { useNotificationStore } from '../../store/notificationStore';
 
 export const DoctorPatients: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const navigate = useNavigate();
 
+  const [isSearching, setIsSearching] = useState(false);
+  const { actor, isReady } = useCanisterActor();
+  const { error } = useNotificationStore();
 
-  const handleSearch = () => {
-    if (searchQuery.trim()) {
-      // In a real app, query useCanisterActor for patient ID matching name/abha
-      // For now, redirect to the patient detail page directly simulating a hit
-      navigate(`/doctor/patients/${searchQuery}`);
+  const handleSearch = async () => {
+    if (!searchQuery.trim() || !isReady) return;
+    
+    setIsSearching(true);
+    try {
+      const res = await (actor as any).lookupPatientByAbha(searchQuery.trim());
+      if ('error' in res) {
+        throw new Error(res.error.message);
+      }
+      if (res.ok && res.ok.length > 0) {
+        // Patient found, navigate to their detail page using their actual Principal ID
+        navigate(`/doctor/patients/${res.ok[0].id}`);
+      } else {
+        error('Patient not found', 'No patient found with that ABHA ID. Please check and try again.');
+      }
+    } catch (err) {
+      error('Search failed', 'An error occurred while looking up the patient.');
+      console.error(err);
+    } finally {
+      setIsSearching(false);
     }
   };
 
@@ -38,7 +57,7 @@ export const DoctorPatients: React.FC = () => {
             onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
             leftIcon={<Search size={18} />}
           />
-          <Button variant="outline" onClick={handleSearch}>Search</Button>
+          <Button variant="outline" onClick={handleSearch} isLoading={isSearching}>Search</Button>
         </div>
       </Card>
 

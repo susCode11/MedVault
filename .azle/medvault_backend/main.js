@@ -63076,6 +63076,9 @@ function isValidAbhaNumber(id2) {
   const stripped = id2.replace(/[-\s]/g, "");
   return /^\d{14}$/.test(stripped);
 }
+function normalizeAbha(id2) {
+  return id2.replace(/[-\s]/g, "");
+}
 
 // server/controllers/userController.ts
 function registerUser(name, role, abhaId) {
@@ -63083,11 +63086,12 @@ function registerUser(name, role, abhaId) {
   if (usersStorage.containsKey(caller)) {
     throw new CanisterError("VALIDATION_ERROR", "User already registered");
   }
-  if (abhaId) {
-    if (!isValidAbhaNumber(abhaId)) {
+  const normalizedAbha = abhaId ? normalizeAbha(abhaId) : "";
+  if (normalizedAbha) {
+    if (!isValidAbhaNumber(normalizedAbha)) {
       throw new CanisterError("VALIDATION_ERROR", "Invalid ABHA number format");
     }
-    if (abhaIndexStorage.containsKey(abhaId)) {
+    if (abhaIndexStorage.containsKey(normalizedAbha)) {
       throw new CanisterError("VALIDATION_ERROR", "ABHA ID already in use");
     }
   }
@@ -63095,14 +63099,14 @@ function registerUser(name, role, abhaId) {
     principal: caller,
     name,
     role,
-    abhaId,
+    abhaId: normalizedAbha,
     licenseNumber: "",
     createdAt: nowNanos(),
     updatedAt: nowNanos()
   };
   usersStorage.insert(caller, profile);
-  if (abhaId) {
-    abhaIndexStorage.insert(abhaId, caller);
+  if (normalizedAbha) {
+    abhaIndexStorage.insert(normalizedAbha, caller);
   }
   insertAudit(caller, "register_user", null, caller, `Registered as ${role}`);
   return profile;
@@ -63114,7 +63118,8 @@ function getProfile() {
 }
 function lookupPatientByAbha(abhaId) {
   requireAuth();
-  const patientPrincipal = abhaIndexStorage.get(abhaId);
+  const normalizedAbha = normalizeAbha(abhaId);
+  const patientPrincipal = abhaIndexStorage.get(normalizedAbha);
   if (patientPrincipal) {
     const profile = usersStorage.get(patientPrincipal);
     if (profile && profile.role === "patient") {
@@ -63129,19 +63134,20 @@ function linkAbhaId(abhaId) {
   if (!profile) {
     throw new CanisterError("NOT_FOUND", "User profile not found");
   }
-  if (!isValidAbhaNumber(abhaId)) {
+  const normalizedAbha = normalizeAbha(abhaId);
+  if (!isValidAbhaNumber(normalizedAbha)) {
     throw new CanisterError("VALIDATION_ERROR", "Invalid ABHA number format");
   }
-  if (abhaIndexStorage.containsKey(abhaId)) {
+  if (abhaIndexStorage.containsKey(normalizedAbha)) {
     throw new CanisterError("VALIDATION_ERROR", "ABHA ID already in use");
   }
   const updatedProfile = {
     ...profile,
-    abhaId,
+    abhaId: normalizedAbha,
     updatedAt: nowNanos()
   };
   usersStorage.insert(caller, updatedProfile);
-  abhaIndexStorage.insert(abhaId, caller);
+  abhaIndexStorage.insert(normalizedAbha, caller);
   insertAudit(caller, "link_abha", null, caller, `Linked ABHA ID: ${abhaId}`);
   return updatedProfile;
 }

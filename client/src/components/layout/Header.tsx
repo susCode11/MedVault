@@ -4,10 +4,41 @@ import { usePortalStore } from '../../store/portalStore';
 import { useNotificationStore } from '../../store/notificationStore';
 import { ProfileMenu } from '../auth/ProfileMenu';
 
+import { useNavigate } from 'react-router-dom';
+import { useCanisterActor } from '../../hooks/useCanister';
+
 export const Header: React.FC = () => {
   const { toggleSidebar, theme, setTheme } = usePortalStore();
   const { info } = useNotificationStore();
   const [hasNotifications, setHasNotifications] = useState(true);
+  const [searchQuery, setSearchQuery] = useState('');
+  const { activePortal } = usePortalStore();
+  const navigate = useNavigate();
+  const { actor, isReady } = useCanisterActor();
+  const { error } = useNotificationStore();
+
+  const handleSearch = async (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter' && searchQuery.trim()) {
+      if (activePortal === 'doctor') {
+        if (!isReady) return;
+        try {
+          const res = await (actor as any).lookupPatientByAbha(searchQuery.trim());
+          if ('error' in res) throw new Error(res.error.message);
+          
+          if (res.ok && res.ok.length > 0) {
+            navigate(`/doctor/patients/${res.ok[0].id}`);
+            setSearchQuery('');
+          } else {
+            error('Patient not found', 'No patient found with that ABHA ID.');
+          }
+        } catch (err) {
+          error('Search failed', 'Could not complete the search.');
+        }
+      } else {
+        error('Feature coming soon', 'Search is currently optimized for doctor patient-lookup.');
+      }
+    }
+  };
 
   return (
     <header className="h-20 flex-shrink-0 flex items-center justify-between px-6 z-10 glass-card mx-6 mt-4 border-surface-border">
@@ -25,8 +56,11 @@ export const Header: React.FC = () => {
           </div>
           <input
             type="text"
-            placeholder="Search records, patients, docs..."
+            placeholder={activePortal === 'doctor' ? "Search patient by ABHA ID..." : "Search records..."}
             className="w-full bg-surface-dark/50 border border-surface-border text-gray-100 rounded-xl pl-10 pr-4 py-2 focus:outline-none focus:border-primary-500 focus:ring-1 focus:ring-primary-500 transition-colors"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            onKeyDown={handleSearch}
           />
         </div>
       </div>

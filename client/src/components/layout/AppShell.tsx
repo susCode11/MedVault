@@ -8,8 +8,8 @@ import { Footer } from './Footer';
 import clsx from 'clsx';
 
 export const AppShell: React.FC = () => {
-  const { isAuthenticated, isLoading } = useAuthStore();
-  const { sidebarCollapsed } = usePortalStore();
+  const { isAuthenticated, isLoading, role } = useAuthStore();
+  const { sidebarCollapsed, activePortal, resetPortal, switchPortal } = usePortalStore();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -18,6 +18,20 @@ export const AppShell: React.FC = () => {
       navigate('/login');
     }
   }, [isAuthenticated, isLoading, navigate]);
+
+  useEffect(() => {
+    // Sync portal with URL
+    if (location.pathname.startsWith('/doctor') && activePortal !== 'doctor') {
+      switchPortal('doctor');
+    } else if (location.pathname.startsWith('/patient') && activePortal !== 'patient') {
+      switchPortal('patient');
+    }
+    
+    // Force patient role to always use patient portal
+    if (role === 'patient' && activePortal === 'doctor') {
+      resetPortal();
+    }
+  }, [location.pathname, activePortal, role, switchPortal, resetPortal]);
 
   // Don't render shell on public routes
   if (location.pathname === '/' || location.pathname === '/login') {

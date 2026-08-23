@@ -120,6 +120,7 @@ export function useAuth() {
       const profile = res.ok.length > 0 ? res.ok[0] : null;
       if (!profile) {
         setProfile(null as any);
+        setRole(null as any);
         return null;
       }
       
@@ -131,6 +132,7 @@ export function useAuth() {
       };
       
       setProfile(serializedProfile);
+      setRole(serializedProfile.role);
       return serializedProfile;
     },
     // Only run this query when authenticated, has a principal, and no profile yet

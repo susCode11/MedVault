@@ -3,22 +3,24 @@ import React, { useEffect } from 'react';
 import { LoginButton } from '../components/auth/LoginButton';
 import { LoginWalkthrough } from '../components/auth/LoginWalkthrough';
 import { Link, useNavigate } from 'react-router-dom';
-import { useAuthStore } from '../store/authStore';
 
+import { useAuth } from '../hooks/useAuth';
 
 export const Login: React.FC = () => {
-  const { isAuthenticated, role } = useAuthStore();
+  const { isAuthenticated, profile, isProfileLoading } = useAuth();
   const navigate = useNavigate();
 
   useEffect(() => {
     if (isAuthenticated) {
-      if (!role) {
+      if (isProfileLoading) return;
+
+      if (!profile) {
         navigate('/role-select');
       } else {
-        navigate(`/${role}/dashboard`);
+        navigate(`/${profile.role}/dashboard`);
       }
     }
-  }, [isAuthenticated, role, navigate]);
+  }, [isAuthenticated, profile, isProfileLoading, navigate]);
 
   return (
     <div className="min-h-screen bg-surface-dark flex items-center justify-center p-4 relative overflow-hidden">

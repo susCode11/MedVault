@@ -3,7 +3,7 @@ import { UserProfile } from '../lib/types.js';
 import { usersStorage, abhaIndexStorage } from '../lib/storage.js';
 import { requireAuth } from '../middleware/auth.js';
 import { insertAudit } from '../middleware/audit.js';
-import { isValidAbhaNumber } from '../utils/abha.js';
+import { isValidAbhaNumber, normalizeAbha } from '../utils/abha.js';
 import { nowNanos } from '../utils/time.js';
 
 export function registerUser(name: string, role: string, abhaId: string): UserProfile {
@@ -13,12 +13,13 @@ export function registerUser(name: string, role: string, abhaId: string): UserPr
         throw new CanisterError('VALIDATION_ERROR', "User already registered");
     }
     
-    if (abhaId) {
-        if (!isValidAbhaNumber(abhaId)) {
+    const normalizedAbha = abhaId ? normalizeAbha(abhaId) : '';
+    if (normalizedAbha) {
+        if (!isValidAbhaNumber(normalizedAbha)) {
             throw new CanisterError('VALIDATION_ERROR', "Invalid ABHA number format");
         }
         
-        if (abhaIndexStorage.containsKey(abhaId)) {
+        if (abhaIndexStorage.containsKey(normalizedAbha)) {
             throw new CanisterError('VALIDATION_ERROR', "ABHA ID already in use");
         }
     }
@@ -27,7 +28,7 @@ export function registerUser(name: string, role: string, abhaId: string): UserPr
         principal: caller,
         name,
         role,
-        abhaId,
+        abhaId: normalizedAbha,
         licenseNumber: "",
         createdAt: nowNanos(),
         updatedAt: nowNanos()
@@ -35,8 +36,8 @@ export function registerUser(name: string, role: string, abhaId: string): UserPr
     
     usersStorage.insert(caller, profile);
     
-    if (abhaId) {
-        abhaIndexStorage.insert(abhaId, caller);
+    if (normalizedAbha) {
+        abhaIndexStorage.insert(normalizedAbha, caller);
     }
     
     insertAudit(caller, "register_user", null, caller, `Registered as ${role}`);
@@ -52,7 +53,8 @@ export function getProfile(): [UserProfile] | [] {
 
 export function lookupPatientByAbha(abhaId: string): [UserProfile] | [] {
     requireAuth(); // Any authenticated user can lookup
-    const patientPrincipal = abhaIndexStorage.get(abhaId);
+    const normalizedAbha = normalizeAbha(abhaId);
+    const patientPrincipal = abhaIndexStorage.get(normalizedAbha);
     if (patientPrincipal) {
         const profile = usersStorage.get(patientPrincipal);
         if (profile && profile.role === 'patient') {
@@ -70,23 +72,24 @@ export function linkAbhaId(abhaId: string): UserProfile {
         throw new CanisterError('NOT_FOUND', "User profile not found");
     }
     
-    if (!isValidAbhaNumber(abhaId)) {
+    const normalizedAbha = normalizeAbha(abhaId);
+    if (!isValidAbhaNumber(normalizedAbha)) {
         throw new CanisterError('VALIDATION_ERROR', "Invalid ABHA number format");
     }
     
-    if (abhaIndexStorage.containsKey(abhaId)) {
+    if (abhaIndexStorage.containsKey(normalizedAbha)) {
         throw new CanisterError('VALIDATION_ERROR', "ABHA ID already in use");
     }
     
     // Update profile
     const updatedProfile = {
         ...profile,
-        abhaId,
+        abhaId: normalizedAbha,
         updatedAt: nowNanos()
     };
     
     usersStorage.insert(caller, updatedProfile);
-    abhaIndexStorage.insert(abhaId, caller);
+    abhaIndexStorage.insert(normalizedAbha, caller);
     
     insertAudit(caller, "link_abha", null, caller, `Linked ABHA ID: ${abhaId}`);
     
