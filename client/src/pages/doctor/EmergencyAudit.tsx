@@ -9,7 +9,7 @@ export const EmergencyAudit: React.FC = () => {
         <p className="text-gray-400">View and manage emergency interventions.</p>
       </div>
 
-      <div className="glass-card p-4">
+      <div className="sleek-card bg-surface-card border-surface-border p-4">
         <EmergencyAuditLog events={[]} onReportAbuse={() => {}} />
       </div>
     </div>

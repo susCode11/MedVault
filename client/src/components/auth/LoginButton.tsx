@@ -64,7 +64,7 @@ export const LoginButton: React.FC = () => {
       onClick={handleLogin} 
       isLoading={isLoading}
       leftIcon={config.icon}
-      className="w-full sm:w-auto h-16 px-8 text-xl font-bold bg-primary-500 hover:bg-primary-400 text-white shadow-glow hover:shadow-glow-accent transition-all duration-300 animate-pulse hover:animate-none group"
+      className="w-full sm:w-auto h-16 px-8 text-xl font-medium bg-primary-600 hover:bg-primary-500 text-white transition-colors duration-200 group rounded-lg border border-primary-500"
     >
       <span className="group-hover:scale-105 transition-transform">{config.label}</span>
     </Button>

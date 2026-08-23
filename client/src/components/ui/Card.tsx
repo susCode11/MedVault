@@ -10,7 +10,7 @@ export const Card: React.FC<CardProps> = ({ hover = false, children, className, 
   return (
     <div
       className={clsx(
-        hover ? 'glass-card-hover' : 'glass-card',
+        hover ? 'sleek-card-hover' : 'sleek-card',
         className
       )}
       {...props}

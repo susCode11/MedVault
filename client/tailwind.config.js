@@ -19,19 +19,19 @@ export default {
           900: 'rgb(var(--color-gray-900) / <alpha-value>)',
         },
         
-        // Primary — deep teal-cyan medical palette
+        // Primary — Clinical Sky Blue
         primary: {
-          50:  '#edfffe', 100: '#c0fffd', 200: '#81fefb',
-          300: '#3af8f5', 400: '#0ce5e5', 500: '#00c4c9',
-          600: '#009da6', 700: '#007d86', 800: '#06636c',
-          900: '#0a525a', 950: '#003139',
+          50: '#f0f9ff', 100: '#e0f2fe', 200: '#bae6fd',
+          300: '#7dd3fc', 400: '#38bdf8', 500: '#0ea5e9',
+          600: '#0284c7', 700: '#0369a1', 800: '#075985',
+          900: '#0c4a6e', 950: '#082f49',
         },
-        // Accent — vibrant violet-indigo
+        // Accent — Health Emerald Green
         accent: {
-          50:  '#f3f1ff', 100: '#ebe5ff', 200: '#d9ceff',
-          300: '#bea6ff', 400: '#9f6eff', 500: '#8338ec',
-          600: '#7417e4', 700: '#6310c7', 800: '#520ea3',
-          900: '#450f85', 950: '#290560',
+          50: '#ecfdf5', 100: '#d1fae5', 200: '#a7f3d0',
+          300: '#6ee7b7', 400: '#34d399', 500: '#10b981',
+          600: '#059669', 700: '#047857', 800: '#065f46',
+          900: '#064e3b', 950: '#022c22',
         },
         // Surface colors for glassmorphism
         surface: {
@@ -52,28 +52,21 @@ export default {
         mono: ['JetBrains Mono', 'Fira Code', 'monospace'],
       },
       backgroundImage: {
-        'gradient-radial': 'radial-gradient(var(--tw-gradient-stops))',
-        'gradient-mesh': 'linear-gradient(135deg, rgba(0,196,201,0.1) 0%, rgba(131,56,236,0.1) 100%)',
-        'glass-gradient': 'linear-gradient(135deg, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0.05) 100%)',
+        // Kept for fallback, but removing glass-gradient and gradient-mesh
       },
       boxShadow: {
-        'glass':     '0 8px 32px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.1)',
-        'glass-sm':  '0 4px 16px rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,255,255,0.08)',
-        'glass-lg':  '0 16px 64px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.12)',
-        'glow':      '0 0 20px rgba(0,196,201,0.3)',
-        'glow-accent': '0 0 20px rgba(131,56,236,0.3)',
+        // Minimal shadows replacing glows
+        'sm': '0 1px 2px 0 rgba(0, 0, 0, 0.05)',
+        'md': '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
       },
       backdropBlur: {
         'xs': '2px',
       },
-      // Note: Kept animations simple as per user request (no complex physics/springs)
       animation: {
-        'fade-in':       'fadeIn 0.3s ease-out',
-        'pulse-glow':    'pulseGlow 2s ease-in-out infinite',
+        'fade-in': 'fadeIn 0.2s ease-out',
       },
       keyframes: {
-        fadeIn:       { '0%': { opacity: 0 }, '100%': { opacity: 1 } },
-        pulseGlow:    { '0%,100%': { boxShadow: '0 0 20px rgba(0,196,201,0.2)' }, '50%': { boxShadow: '0 0 40px rgba(0,196,201,0.4)' } },
+        fadeIn: { '0%': { opacity: 0 }, '100%': { opacity: 1 } },
       },
     },
   },

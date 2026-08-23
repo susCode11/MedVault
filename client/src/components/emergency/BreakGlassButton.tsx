@@ -50,7 +50,7 @@ export const BreakGlassButton: React.FC<BreakGlassButtonProps> = ({ onActivate, 
         className={clsx(
           "relative overflow-hidden w-64 h-64 rounded-full border-8 transition-all duration-300 flex flex-col items-center justify-center cursor-pointer outline-none",
           disabled ? "border-gray-600 bg-gray-800 opacity-50 cursor-not-allowed" : 
-          isPressing ? "border-danger-400 bg-danger-500/20 scale-95 shadow-[0_0_50px_rgba(239,68,68,0.6)]" : "border-danger-500 bg-surface-dark hover:shadow-glow-danger hover:border-danger-400 shadow-[0_0_30px_rgba(239,68,68,0.3)]"
+          isPressing ? "border-danger-600 bg-danger-600 scale-95" : "border-danger-500 bg-surface-dark hover:bg-surface-hover hover:border-danger-400"
         )}
       >
         <div 

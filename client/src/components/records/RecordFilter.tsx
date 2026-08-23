@@ -35,7 +35,7 @@ export const RecordFilter: React.FC = () => {
       </div>
 
       {isOpen && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 p-4 glass-card animate-slide-down origin-top">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 p-4 sleek-card bg-surface-card border-surface-border animate-slide-down origin-top">
           <Select
             label="Category"
             value={filters.category || 'all'}

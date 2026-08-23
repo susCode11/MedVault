@@ -9,6 +9,13 @@ import { useNotificationStore } from '../store/notificationStore';
 import { ShieldAlert, CheckCircle, Stethoscope } from 'lucide-react';
 import { useCanisterActor } from '../hooks/useCanister';
 import { useAuth } from '../hooks/useAuth';
+import { motion, AnimatePresence } from 'framer-motion';
+
+const stepVariants = {
+  initial: { opacity: 0, x: 20 },
+  animate: { opacity: 1, x: 0 },
+  exit: { opacity: 0, x: -20, transition: { duration: 0.2 } }
+};
 
 export const DoctorOnboarding: React.FC = () => {
   const [step, setStep] = useState<1 | 2>(1);
@@ -96,73 +103,95 @@ export const DoctorOnboarding: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-surface-dark flex items-center justify-center p-4">
-      <div className="w-full max-w-md animate-scale-in">
+      <motion.div 
+        initial={{ opacity: 0, scale: 0.95 }}
+        animate={{ opacity: 1, scale: 1 }}
+        transition={{ duration: 0.3, ease: 'easeOut' }}
+        className="w-full max-w-md"
+      >
         <div className="text-center mb-8">
-          <div className="w-16 h-16 rounded-2xl bg-accent-500/20 text-accent-400 flex items-center justify-center mx-auto mb-4">
+          <div className="w-16 h-16 rounded-xl bg-surface-hover border border-surface-border text-accent-400 flex items-center justify-center mx-auto mb-4">
             <Stethoscope size={32} />
           </div>
-          <h1 className="text-2xl font-bold text-white mb-2">Doctor Verification</h1>
-          <p className="text-gray-400">
+          <h1 className="text-2xl font-semibold text-white mb-2 tracking-tight">Doctor Verification</h1>
+          <p className="text-sm text-gray-400 font-light leading-relaxed">
             To ensure patient safety, all doctors must verify their National Medical Commission (NMC) license.
           </p>
         </div>
 
-        <Card className="p-6">
-          {step === 1 && (
-            <form onSubmit={handleVerify} className="space-y-6">
-              <Input
-                label="NMC License Number"
-                placeholder="e.g., DMC/12345 or 12345"
-                value={licenseNumber}
-                onChange={(e) => setLicenseNumber(e.target.value)}
-                required
-              />
-              <div className="flex flex-col space-y-3">
-                <Button type="submit" isLoading={isLoading} className="w-full" variant="primary">
-                  Verify License
-                </Button>
-                <Button type="button" variant="ghost" onClick={handleLogOut} className="w-full text-gray-500">
-                  Cancel & Log Out
-                </Button>
-              </div>
-            </form>
-          )}
+        <Card className="p-6 relative overflow-hidden sleek-card">
+          <AnimatePresence mode="wait">
+            {step === 1 && (
+              <motion.form 
+                key="step1"
+                variants={stepVariants}
+                initial="initial"
+                animate="animate"
+                exit="exit"
+                onSubmit={handleVerify} 
+                className="space-y-6"
+              >
+                <Input
+                  label="NMC License Number"
+                  placeholder="e.g., DMC/12345 or 12345"
+                  value={licenseNumber}
+                  onChange={(e) => setLicenseNumber(e.target.value)}
+                  required
+                />
+                <div className="flex flex-col space-y-3">
+                  <Button type="submit" isLoading={isLoading} className="w-full" variant="primary">
+                    Verify License
+                  </Button>
+                  <Button type="button" variant="ghost" onClick={handleLogOut} className="w-full text-gray-500">
+                    Cancel & Log Out
+                  </Button>
+                </div>
+              </motion.form>
+            )}
 
-          {step === 2 && profile && (
-            <div className="space-y-6">
-              <div className="bg-success-500/10 border border-success-500/20 rounded-lg p-4 flex items-start gap-4">
-                <CheckCircle className="text-success-500 mt-1" size={24} />
-                <div>
-                  <h3 className="text-white font-bold mb-1">License Verified</h3>
-                  <div className="text-sm text-gray-400 space-y-1">
-                    <p><span className="text-gray-500">Name:</span> {profile.name}</p>
-                    <p><span className="text-gray-500">Council:</span> {profile.stateMedicalCouncil}</p>
-                    <p><span className="text-gray-500">Year:</span> {profile.registrationYear}</p>
-                    <p><span className="text-gray-500">Status:</span> <span className="text-success-400">{profile.status}</span></p>
+            {step === 2 && profile && (
+              <motion.div 
+                key="step2"
+                variants={stepVariants}
+                initial="initial"
+                animate="animate"
+                exit="exit"
+                className="space-y-6"
+              >
+                <div className="bg-success-500/10 border border-success-500/20 rounded-lg p-4 flex items-start gap-4">
+                  <CheckCircle className="text-success-500 mt-1" size={24} />
+                  <div>
+                    <h3 className="text-white font-semibold mb-1">License Verified</h3>
+                    <div className="text-sm text-gray-400 space-y-1 font-light">
+                      <p><span className="text-gray-500">Name:</span> {profile.name}</p>
+                      <p><span className="text-gray-500">Council:</span> {profile.stateMedicalCouncil}</p>
+                      <p><span className="text-gray-500">Year:</span> {profile.registrationYear}</p>
+                      <p><span className="text-gray-500">Status:</span> <span className="text-success-400">{profile.status}</span></p>
+                    </div>
                   </div>
                 </div>
-              </div>
-              
-              <div className="bg-surface-hover p-4 rounded-lg flex items-start gap-3">
-                <ShieldAlert className="text-accent-400 shrink-0 mt-0.5" size={18} />
-                <p className="text-xs text-gray-400 leading-relaxed">
-                  By proceeding, you confirm that these details belong to you and agree to MedVault's strict 
-                  data access policies. Unauthorized access to patient records is a criminal offense.
-                </p>
-              </div>
+                
+                <div className="bg-surface-hover border border-surface-border p-4 rounded-lg flex items-start gap-3">
+                  <ShieldAlert className="text-accent-400 shrink-0 mt-0.5" size={18} />
+                  <p className="text-xs text-gray-400 leading-relaxed font-light">
+                    By proceeding, you confirm that these details belong to you and agree to MedVault's strict 
+                    data access policies. Unauthorized access to patient records is a criminal offense.
+                  </p>
+                </div>
 
-              <div className="flex flex-col space-y-3">
-                <Button onClick={handleConfirmAndLink} isLoading={isLoading} className="w-full" variant="primary">
-                  Confirm & Access Portal
-                </Button>
-                <Button onClick={() => setStep(1)} variant="ghost" className="w-full" disabled={isLoading}>
-                  This is not me
-                </Button>
-              </div>
-            </div>
-          )}
+                <div className="flex flex-col space-y-3">
+                  <Button onClick={handleConfirmAndLink} isLoading={isLoading} className="w-full" variant="primary">
+                    Confirm & Access Portal
+                  </Button>
+                  <Button onClick={() => setStep(1)} variant="ghost" className="w-full" disabled={isLoading}>
+                    This is not me
+                  </Button>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </Card>
-      </div>
+      </motion.div>
     </div>
   );
 };

@@ -42,7 +42,7 @@ export const EncryptionProgress: React.FC<EncryptionProgressProps> = ({ progress
                 "w-8 h-8 rounded-full flex items-center justify-center transition-all duration-300 border-2",
                 isCompleted ? "bg-success-500 border-success-500 text-white" :
                 isError ? "bg-danger-500 border-danger-500 text-white" :
-                isCurrent ? "border-primary-500 text-primary-400 bg-primary-500/10 shadow-glow" :
+                isCurrent ? "border-primary-500 text-white bg-primary-600" :
                 "border-surface-border bg-surface-card text-gray-500"
               )}>
                 {isCompleted ? <Check size={16} /> :

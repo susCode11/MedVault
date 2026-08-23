@@ -24,12 +24,12 @@ export const RecordList: React.FC<RecordListProps> = ({ records, isLoading, onRe
 
   if (records.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center py-24 px-4 text-center glass-card border-dashed">
-        <div className="w-16 h-16 rounded-full bg-surface-dark flex items-center justify-center mb-4 text-gray-500">
+      <div className="flex flex-col items-center justify-center py-24 px-4 text-center border-dashed border border-surface-border rounded-lg bg-surface-card">
+        <div className="w-16 h-16 rounded-full bg-surface-dark flex items-center justify-center mb-4 text-gray-500 border border-surface-border">
           <FolderOpen size={32} />
         </div>
-        <h3 className="text-xl font-semibold text-white mb-2">No records found</h3>
-        <p className="text-gray-400 max-w-sm">
+        <h3 className="text-xl font-semibold text-white mb-2 tracking-tight">No records found</h3>
+        <p className="text-sm font-light text-gray-400 max-w-sm leading-relaxed">
           Try adjusting your filters or upload a new medical record to get started.
         </p>
       </div>

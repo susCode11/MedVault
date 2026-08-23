@@ -41,7 +41,7 @@ export const Header: React.FC = () => {
   };
 
   return (
-    <header className="h-20 flex-shrink-0 flex items-center justify-between px-6 z-10 glass-card mx-6 mt-4 border-surface-border">
+    <header className="h-20 flex-shrink-0 flex items-center justify-between px-6 z-10 sleek-card bg-surface-card mx-6 mt-4 border-surface-border">
       <div className="flex items-center flex-1">
         <button
           onClick={toggleSidebar}

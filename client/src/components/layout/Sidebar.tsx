@@ -37,21 +37,21 @@ export const Sidebar: React.FC = () => {
   return (
     <aside
       className={clsx(
-        "fixed inset-y-0 left-0 z-20 flex flex-col glass-card border-l-0 border-y-0 rounded-none transition-all duration-300",
+        "fixed inset-y-0 left-0 z-20 flex flex-col bg-surface-card border-r border-surface-border rounded-none transition-all duration-300",
         sidebarCollapsed ? "w-[80px]" : "w-[280px]"
       )}
     >
       <div className="h-20 flex items-center justify-center border-b border-surface-border">
         {sidebarCollapsed ? (
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary-500 to-accent-500 flex items-center justify-center font-bold text-white shadow-glow">
+          <div className="w-10 h-10 rounded-lg bg-primary-600 flex items-center justify-center font-bold text-white">
             M
           </div>
         ) : (
           <div className="flex items-center space-x-3">
-            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-primary-500 to-accent-500 flex items-center justify-center font-bold text-[#ffffff] shadow-glow">
+            <div className="w-8 h-8 rounded-lg bg-primary-600 flex items-center justify-center font-bold text-white">
               M
             </div>
-            <span className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-white to-gray-400">
+            <span className="text-xl font-bold text-white tracking-tight">
               MedVault
             </span>
           </div>
@@ -77,10 +77,10 @@ export const Sidebar: React.FC = () => {
                 key={item.path}
                 to={item.path}
                 className={({ isActive }) => clsx(
-                  "flex items-center px-4 py-3 text-sm font-medium rounded-xl transition-all duration-200 group relative",
+                  "flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-all duration-200 group relative",
                   isActive 
-                    ? "bg-primary-500/10 text-primary-400 border border-primary-500/20 shadow-[inset_0_0_20px_rgba(0,196,201,0.1)]" 
-                    : "text-gray-400 hover:bg-surface-hover hover:text-gray-200"
+                    ? "bg-surface-hover text-white border border-surface-border" 
+                    : "text-gray-400 hover:bg-surface-hover hover:text-gray-200 border border-transparent"
                 )}
               >
                 {({ isActive }) => (
@@ -94,7 +94,7 @@ export const Sidebar: React.FC = () => {
                     </span>
                     {!sidebarCollapsed && item.name}
                     {isActive && !sidebarCollapsed && (
-                      <div className="absolute left-0 w-1 h-6 bg-primary-500 rounded-r-full shadow-glow" />
+                      <div className="absolute left-0 w-1 h-6 bg-primary-500 rounded-r-full" />
                     )}
                   </>
                 )}
@@ -115,10 +115,10 @@ export const Sidebar: React.FC = () => {
                 key={item.path}
                 to={item.path}
                 className={({ isActive }) => clsx(
-                  "flex items-center px-4 py-3 text-sm font-medium rounded-xl transition-all duration-200 group relative",
+                  "flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-all duration-200 group relative",
                   isActive 
-                    ? "bg-accent-500/10 text-accent-400 border border-accent-500/20" 
-                    : "text-gray-400 hover:bg-surface-hover hover:text-gray-200"
+                    ? "bg-surface-hover text-white border border-surface-border" 
+                    : "text-gray-400 hover:bg-surface-hover hover:text-gray-200 border border-transparent"
                 )}
               >
                 {({ isActive }) => (

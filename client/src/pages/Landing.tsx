@@ -2,38 +2,60 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import { Button } from '../components/ui/Button';
 import { ShieldCheck, Activity, Key } from 'lucide-react';
+import { motion, Variants } from 'framer-motion';
+
+const containerVariants: Variants = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: { staggerChildren: 0.1, delayChildren: 0.1 }
+  }
+};
+
+const itemVariants: Variants = {
+  hidden: { opacity: 0, y: 15 },
+  visible: { opacity: 1, y: 0, transition: { duration: 0.3, ease: 'easeOut' } }
+};
 
 export const Landing: React.FC = () => {
   return (
     <div className="min-h-screen bg-surface-dark text-gray-100 flex flex-col font-sans">
-      <header className="h-20 flex items-center justify-between px-6 sm:px-12 max-w-7xl w-full mx-auto z-10">
+      <motion.header 
+        initial={{ opacity: 0, y: -10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.3, ease: 'easeOut' }}
+        className="h-20 flex items-center justify-between px-6 sm:px-12 max-w-7xl w-full mx-auto z-10 border-b border-surface-border"
+      >
         <div className="flex items-center space-x-3">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary-500 to-accent-500 flex items-center justify-center font-bold text-[#ffffff] shadow-glow">
+          <div className="w-8 h-8 flex items-center justify-center font-bold text-white bg-primary-600 rounded-md">
             M
           </div>
-          <span className="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-white to-gray-400">
+          <span className="text-xl font-bold text-white tracking-tight">
             MedVault
           </span>
         </div>
         <Link to="/login">
           <Button variant="ghost">Login</Button>
         </Link>
-      </header>
+      </motion.header>
 
       <main className="flex-1 flex flex-col items-center justify-center relative overflow-hidden px-4">
-        <div className="absolute inset-0 bg-gradient-mesh opacity-50 z-0"></div>
-        
-        <div className="z-10 text-center max-w-3xl mx-auto mt-20 sm:mt-0 animate-slide-up">
-          <h1 className="text-5xl sm:text-7xl font-extrabold tracking-tight mb-6">
+        <motion.div 
+          variants={containerVariants}
+          initial="hidden"
+          animate="visible"
+          className="z-10 text-center max-w-3xl mx-auto mt-20 sm:mt-0"
+        >
+          <motion.h1 variants={itemVariants} className="text-5xl sm:text-7xl font-semibold tracking-tighter mb-6 text-white">
             Your Health Data, <br className="hidden sm:block" />
-            <span className="gradient-text">Decentralized.</span>
-          </h1>
-          <p className="text-lg sm:text-xl text-gray-400 mb-10 max-w-2xl mx-auto leading-relaxed">
+            Decentralized.
+          </motion.h1>
+          <motion.p variants={itemVariants} className="text-lg sm:text-xl text-gray-400 mb-10 max-w-2xl mx-auto leading-relaxed font-light">
             Secure, end-to-end encrypted medical records stored on the Internet Computer. You control who gets access. Integrated seamlessly with ABHA.
-          </p>
-          <div className="flex flex-col sm:flex-row items-center justify-center space-y-4 sm:space-y-0 sm:space-x-6">
+          </motion.p>
+          <motion.div variants={itemVariants} className="flex flex-col sm:flex-row items-center justify-center space-y-4 sm:space-y-0 sm:space-x-6">
             <Link to="/login">
-              <Button size="lg" className="w-full sm:w-auto shadow-glow">
+              <Button size="lg" className="w-full sm:w-auto">
                 Get Started
               </Button>
             </Link>
@@ -42,32 +64,41 @@ export const Landing: React.FC = () => {
                 Learn More
               </Button>
             </a>
-          </div>
-        </div>
+          </motion.div>
+        </motion.div>
 
-        <div id="how-it-works" className="z-10 mt-32 w-full max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-8 pb-32">
-          <div className="glass-card p-8 text-center animate-fade-in" style={{ animationDelay: '0.1s' }}>
-            <div className="w-16 h-16 rounded-2xl bg-primary-500/20 text-primary-400 flex items-center justify-center mx-auto mb-6">
-              <ShieldCheck size={32} />
+        <motion.div 
+          id="how-it-works"
+          initial="hidden"
+          whileInView="visible"
+          viewport={{ once: true, margin: "-100px" }}
+          variants={containerVariants}
+          className="z-10 mt-32 w-full max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-8 pb-32"
+        >
+          <motion.div variants={itemVariants} className="sleek-card p-8 text-center transition-colors">
+            <div className="w-12 h-12 rounded-lg bg-surface-hover border border-surface-border text-primary-400 flex items-center justify-center mx-auto mb-6">
+              <ShieldCheck size={24} />
             </div>
-            <h3 className="text-xl font-bold text-white mb-3">Military-Grade Encryption</h3>
-            <p className="text-gray-400">Every record is encrypted before leaving your device. Stored permanently on decentralized networks.</p>
-          </div>
-          <div className="glass-card p-8 text-center animate-fade-in" style={{ animationDelay: '0.2s' }}>
-            <div className="w-16 h-16 rounded-2xl bg-accent-500/20 text-accent-400 flex items-center justify-center mx-auto mb-6">
-              <Key size={32} />
+            <h3 className="text-lg font-semibold text-white mb-3">Military-Grade Encryption</h3>
+            <p className="text-sm text-gray-400 leading-relaxed font-light">Every record is encrypted before leaving your device. Stored permanently on decentralized networks.</p>
+          </motion.div>
+          
+          <motion.div variants={itemVariants} className="sleek-card p-8 text-center transition-colors">
+            <div className="w-12 h-12 rounded-lg bg-surface-hover border border-surface-border text-accent-400 flex items-center justify-center mx-auto mb-6">
+              <Key size={24} />
             </div>
-            <h3 className="text-xl font-bold text-white mb-3">You Hold the Keys</h3>
-            <p className="text-gray-400">Grant temporary or permanent access to doctors. Revoke access instantly at any time.</p>
-          </div>
-          <div className="glass-card p-8 text-center animate-fade-in" style={{ animationDelay: '0.3s' }}>
-            <div className="w-16 h-16 rounded-2xl bg-info-500/20 text-info-400 flex items-center justify-center mx-auto mb-6">
-              <Activity size={32} />
+            <h3 className="text-lg font-semibold text-white mb-3">You Hold the Keys</h3>
+            <p className="text-sm text-gray-400 leading-relaxed font-light">Grant temporary or permanent access to doctors. Revoke access instantly at any time.</p>
+          </motion.div>
+          
+          <motion.div variants={itemVariants} className="sleek-card p-8 text-center transition-colors">
+            <div className="w-12 h-12 rounded-lg bg-surface-hover border border-surface-border text-info-400 flex items-center justify-center mx-auto mb-6">
+              <Activity size={24} />
             </div>
-            <h3 className="text-xl font-bold text-white mb-3">ABHA Integration</h3>
-            <p className="text-gray-400">Link your Ayushman Bharat Health Account to seamlessly fetch records from the national registry.</p>
-          </div>
-        </div>
+            <h3 className="text-lg font-semibold text-white mb-3">ABHA Integration</h3>
+            <p className="text-sm text-gray-400 leading-relaxed font-light">Link your Ayushman Bharat Health Account to seamlessly fetch records from the national registry.</p>
+          </motion.div>
+        </motion.div>
       </main>
     </div>
   );

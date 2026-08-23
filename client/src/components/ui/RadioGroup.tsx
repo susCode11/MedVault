@@ -31,7 +31,7 @@ export const RadioGroup: React.FC<RadioGroupProps> = ({ options, value, onChange
               className={clsx(
                 "p-4 transition-all duration-200 border-2",
                 isSelected 
-                  ? "border-primary-500 bg-primary-500/5 shadow-glow" 
+                  ? "border-primary-500 bg-surface-hover" 
                   : "border-transparent hover:border-gray-500"
               )}
             >
