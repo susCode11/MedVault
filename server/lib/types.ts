@@ -172,3 +172,13 @@ export type AbuseReport = {
     reason: string;
     createdAt: bigint;
 };
+
+export const PinataConfigIDL = IDL.Record({
+    jwt: IDL.Text,
+    gateway: IDL.Text,
+});
+
+export type PinataConfig = {
+    jwt: string;
+    gateway: string;
+};

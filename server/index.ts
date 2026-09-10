@@ -5,7 +5,8 @@ import {
     AccessGrantIDL, AccessGrant,
     EmergencyAccessEventIDL, EmergencyAccessEvent,
     AbuseReportIDL, AbuseReport,
-    CanisterResponseIDL, CanisterResponse
+    CanisterResponseIDL, CanisterResponse,
+    PinataConfigIDL, PinataConfig
 } from './lib/types.js';
 import { withResponse } from './lib/wrapper.js';
 
@@ -137,5 +138,21 @@ export default class MedVaultBackend {
     @query([], CanisterResponseIDL(IDL.Vec(AbuseReportIDL)))
     listAbuseReports(): CanisterResponse<AbuseReport[]> {
         return withResponse(() => reportCtrl.listAbuseReports());
+    }
+
+    // ==========================================
+    // CONFIGURATION
+    // ==========================================
+    
+    @query([], CanisterResponseIDL(PinataConfigIDL))
+    getPinataConfig(): CanisterResponse<PinataConfig> {
+        return withResponse(() => {
+            const jwt = process.env.VITE_PINATA_JWT || '';
+            const gateway = process.env.VITE_PINATA_GATEWAY || '';
+            if (!jwt) {
+                console.log("Warning: Pinata JWT not configured on backend");
+            }
+            return { jwt, gateway };
+        });
     }
 }

@@ -1,5 +1,6 @@
 service: () -> {
     createRecord: (text, text, text, text, text, text) -> (variant {ok:text; error:record {code:text; message:text}});
+    getPinataConfig: () -> (variant {ok:record {jwt:text; gateway:text}; error:record {code:text; message:text}}) query;
     getProfile: () -> (variant {ok:opt record {"principal":text; name:text; createdAt:nat64; role:text; abhaId:text; updatedAt:nat64; licenseNumber:text}; error:record {code:text; message:text}}) query;
     getRecord: (text) -> (variant {ok:opt record {id:text; title:text; encryptionKeyId:text; createdAt:nat64; description:text; recordType:text; updatedAt:nat64; patientPrincipal:text; doctorPrincipal:text; ipfsCid:text}; error:record {code:text; message:text}}) query;
     grantAccess: (text, vec text, nat32) -> (variant {ok:text; error:record {code:text; message:text}});

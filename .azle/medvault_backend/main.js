@@ -62981,6 +62981,10 @@ var AbuseReportIDL = idl_exports2.Record({
   reason: idl_exports2.Text,
   createdAt: idl_exports2.Nat64
 });
+var PinataConfigIDL = idl_exports2.Record({
+  jwt: idl_exports2.Text,
+  gateway: idl_exports2.Text
+});
 
 // server/lib/wrapper.ts
 function withResponse(fn) {
@@ -63426,8 +63430,8 @@ function listAbuseReports() {
 
 // server/index.ts
 var PaginatedMedicalRecordsIDL = idl_exports2.Record({ items: idl_exports2.Vec(MedicalRecordIDL), total: idl_exports2.Nat32 });
-var _listAbuseReports_dec, _submitAbuseReport_dec, _listEmergencyEvents_dec, _resolveEmergencyAccess_dec, _triggerEmergencyAccess_dec, _listMyGrants_dec, _revokeAccess_dec, _grantAccess_dec, _requestAccess_dec, _listMyRecords_dec, _listRecords_dec, _getRecord_dec, _createRecord_dec, _lookupPatientByAbha_dec, _getProfile_dec, _updateName_dec, _linkLicenseNumber_dec, _linkAbhaId_dec, _registerUser_dec, _init;
-_registerUser_dec = [update3([idl_exports2.Text, idl_exports2.Text, idl_exports2.Text], CanisterResponseIDL(UserProfileIDL))], _linkAbhaId_dec = [update3([idl_exports2.Text], CanisterResponseIDL(UserProfileIDL))], _linkLicenseNumber_dec = [update3([idl_exports2.Text], CanisterResponseIDL(UserProfileIDL))], _updateName_dec = [update3([idl_exports2.Text], CanisterResponseIDL(UserProfileIDL))], _getProfile_dec = [query3([], CanisterResponseIDL(idl_exports2.Opt(UserProfileIDL)))], _lookupPatientByAbha_dec = [query3([idl_exports2.Text], CanisterResponseIDL(idl_exports2.Opt(UserProfileIDL)))], _createRecord_dec = [update3([idl_exports2.Text, idl_exports2.Text, idl_exports2.Text, idl_exports2.Text, idl_exports2.Text, idl_exports2.Text], CanisterResponseIDL(idl_exports2.Text))], _getRecord_dec = [query3([idl_exports2.Text], CanisterResponseIDL(idl_exports2.Opt(MedicalRecordIDL)))], _listRecords_dec = [query3([idl_exports2.Opt(idl_exports2.Text), idl_exports2.Opt(idl_exports2.Text), idl_exports2.Nat32, idl_exports2.Nat32], CanisterResponseIDL(PaginatedMedicalRecordsIDL))], _listMyRecords_dec = [query3([], CanisterResponseIDL(idl_exports2.Vec(MedicalRecordIDL)))], _requestAccess_dec = [update3([idl_exports2.Text, idl_exports2.Vec(idl_exports2.Text), idl_exports2.Text, idl_exports2.Nat32], CanisterResponseIDL(idl_exports2.Text))], _grantAccess_dec = [update3([idl_exports2.Text, idl_exports2.Vec(idl_exports2.Text), idl_exports2.Nat32], CanisterResponseIDL(idl_exports2.Text))], _revokeAccess_dec = [update3([idl_exports2.Text], CanisterResponseIDL(idl_exports2.Bool))], _listMyGrants_dec = [query3([], CanisterResponseIDL(idl_exports2.Vec(AccessGrantIDL)))], _triggerEmergencyAccess_dec = [update3([idl_exports2.Text, idl_exports2.Text, idl_exports2.Text], CanisterResponseIDL(idl_exports2.Text))], _resolveEmergencyAccess_dec = [update3([idl_exports2.Text, idl_exports2.Text], CanisterResponseIDL(idl_exports2.Bool))], _listEmergencyEvents_dec = [query3([], CanisterResponseIDL(idl_exports2.Vec(EmergencyAccessEventIDL)))], _submitAbuseReport_dec = [update3([idl_exports2.Text, idl_exports2.Text], CanisterResponseIDL(idl_exports2.Text))], _listAbuseReports_dec = [query3([], CanisterResponseIDL(idl_exports2.Vec(AbuseReportIDL)))];
+var _getPinataConfig_dec, _listAbuseReports_dec, _submitAbuseReport_dec, _listEmergencyEvents_dec, _resolveEmergencyAccess_dec, _triggerEmergencyAccess_dec, _listMyGrants_dec, _revokeAccess_dec, _grantAccess_dec, _requestAccess_dec, _listMyRecords_dec, _listRecords_dec, _getRecord_dec, _createRecord_dec, _lookupPatientByAbha_dec, _getProfile_dec, _updateName_dec, _linkLicenseNumber_dec, _linkAbhaId_dec, _registerUser_dec, _init;
+_registerUser_dec = [update3([idl_exports2.Text, idl_exports2.Text, idl_exports2.Text], CanisterResponseIDL(UserProfileIDL))], _linkAbhaId_dec = [update3([idl_exports2.Text], CanisterResponseIDL(UserProfileIDL))], _linkLicenseNumber_dec = [update3([idl_exports2.Text], CanisterResponseIDL(UserProfileIDL))], _updateName_dec = [update3([idl_exports2.Text], CanisterResponseIDL(UserProfileIDL))], _getProfile_dec = [query3([], CanisterResponseIDL(idl_exports2.Opt(UserProfileIDL)))], _lookupPatientByAbha_dec = [query3([idl_exports2.Text], CanisterResponseIDL(idl_exports2.Opt(UserProfileIDL)))], _createRecord_dec = [update3([idl_exports2.Text, idl_exports2.Text, idl_exports2.Text, idl_exports2.Text, idl_exports2.Text, idl_exports2.Text], CanisterResponseIDL(idl_exports2.Text))], _getRecord_dec = [query3([idl_exports2.Text], CanisterResponseIDL(idl_exports2.Opt(MedicalRecordIDL)))], _listRecords_dec = [query3([idl_exports2.Opt(idl_exports2.Text), idl_exports2.Opt(idl_exports2.Text), idl_exports2.Nat32, idl_exports2.Nat32], CanisterResponseIDL(PaginatedMedicalRecordsIDL))], _listMyRecords_dec = [query3([], CanisterResponseIDL(idl_exports2.Vec(MedicalRecordIDL)))], _requestAccess_dec = [update3([idl_exports2.Text, idl_exports2.Vec(idl_exports2.Text), idl_exports2.Text, idl_exports2.Nat32], CanisterResponseIDL(idl_exports2.Text))], _grantAccess_dec = [update3([idl_exports2.Text, idl_exports2.Vec(idl_exports2.Text), idl_exports2.Nat32], CanisterResponseIDL(idl_exports2.Text))], _revokeAccess_dec = [update3([idl_exports2.Text], CanisterResponseIDL(idl_exports2.Bool))], _listMyGrants_dec = [query3([], CanisterResponseIDL(idl_exports2.Vec(AccessGrantIDL)))], _triggerEmergencyAccess_dec = [update3([idl_exports2.Text, idl_exports2.Text, idl_exports2.Text], CanisterResponseIDL(idl_exports2.Text))], _resolveEmergencyAccess_dec = [update3([idl_exports2.Text, idl_exports2.Text], CanisterResponseIDL(idl_exports2.Bool))], _listEmergencyEvents_dec = [query3([], CanisterResponseIDL(idl_exports2.Vec(EmergencyAccessEventIDL)))], _submitAbuseReport_dec = [update3([idl_exports2.Text, idl_exports2.Text], CanisterResponseIDL(idl_exports2.Text))], _listAbuseReports_dec = [query3([], CanisterResponseIDL(idl_exports2.Vec(AbuseReportIDL)))], _getPinataConfig_dec = [query3([], CanisterResponseIDL(PinataConfigIDL))];
 var MedVaultBackend = class {
   constructor() {
     __runInitializers(_init, 5, this);
@@ -63493,6 +63497,16 @@ var MedVaultBackend = class {
   listAbuseReports() {
     return withResponse(() => listAbuseReports());
   }
+  getPinataConfig() {
+    return withResponse(() => {
+      const jwt = process.env.VITE_PINATA_JWT || "";
+      const gateway = process.env.VITE_PINATA_GATEWAY || "";
+      if (!jwt) {
+        console.log("Warning: Pinata JWT not configured on backend");
+      }
+      return { jwt, gateway };
+    });
+  }
 };
 _init = __decoratorStart(null);
 __decorateElement(_init, 1, "registerUser", _registerUser_dec, MedVaultBackend);
@@ -63514,6 +63528,7 @@ __decorateElement(_init, 1, "resolveEmergencyAccess", _resolveEmergencyAccess_de
 __decorateElement(_init, 1, "listEmergencyEvents", _listEmergencyEvents_dec, MedVaultBackend);
 __decorateElement(_init, 1, "submitAbuseReport", _submitAbuseReport_dec, MedVaultBackend);
 __decorateElement(_init, 1, "listAbuseReports", _listAbuseReports_dec, MedVaultBackend);
+__decorateElement(_init, 1, "getPinataConfig", _getPinataConfig_dec, MedVaultBackend);
 __decoratorMetadata(_init, MedVaultBackend);
 
 // <stdin>

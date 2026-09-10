@@ -27,14 +27,14 @@ function getOptionalEnv(key: string, fallback: string): string {
 // ICP / DFX
 // ---------------------------------------------------------------------------
 
-export const DFX_NETWORK = getOptionalEnv('DFX_NETWORK', 'local');
+export const DFX_NETWORK = process.env.DFX_NETWORK || getOptionalEnv('DFX_NETWORK', 'local');
 
-export const MEDVAULT_BACKEND_CANISTER_ID = getOptionalEnv(
+export const MEDVAULT_BACKEND_CANISTER_ID = process.env.MEDVAULT_BACKEND_CANISTER_ID || getOptionalEnv(
   'MEDVAULT_BACKEND_CANISTER_ID',
   getOptionalEnv('CANISTER_ID_MEDVAULT_BACKEND', '')
 );
 
-export const INTERNET_IDENTITY_CANISTER_ID = getOptionalEnv(
+export const INTERNET_IDENTITY_CANISTER_ID = process.env.INTERNET_IDENTITY_CANISTER_ID || getOptionalEnv(
   'INTERNET_IDENTITY_CANISTER_ID',
   getOptionalEnv('CANISTER_ID_INTERNET_IDENTITY', '')
 );
@@ -42,12 +42,6 @@ export const INTERNET_IDENTITY_CANISTER_ID = getOptionalEnv(
 // ---------------------------------------------------------------------------
 // Pinata (IPFS)
 // ---------------------------------------------------------------------------
-
-/** Pinata JWT — required for file uploads. */
-export const PINATA_JWT = getOptionalEnv('VITE_PINATA_JWT', '');
-
-/** Pinata gateway domain (e.g., gateway.pinata.cloud). */
-export const PINATA_GATEWAY = getOptionalEnv('VITE_PINATA_GATEWAY', '');
 
 // ---------------------------------------------------------------------------
 // ABHA Service
@@ -96,12 +90,7 @@ export function validateEnv(): void {
   if (!INTERNET_IDENTITY_CANISTER_ID) {
     warnings.push('INTERNET_IDENTITY_CANISTER_ID is not set. Auth will use fallback URL.');
   }
-  if (!PINATA_JWT) {
-    warnings.push('VITE_PINATA_JWT is not set. File uploads will fail.');
-  }
-  if (!PINATA_GATEWAY) {
-    warnings.push('VITE_PINATA_GATEWAY is not set. File downloads will fail.');
-  }
+  // Pinata config is now fetched dynamically from the backend
   if (ABHA_MODE === 'real' && (!ABDM_CLIENT_ID || !ABDM_CLIENT_SECRET)) {
     warnings.push('ABHA_MODE is "real" but ABDM credentials are missing. ABHA verification will fail.');
   }

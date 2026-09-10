@@ -267,7 +267,7 @@ export function useAuth() {
 
     // --- Profile query (TanStack Query) ---
     profileQuery,
-    isProfileLoading: profileQuery.isLoading,
+    isProfileLoading: profileQuery.isPending || (isAuthenticated && !isReady),
     isProfileError:   profileQuery.isError,
     profileError:     profileQuery.error,
 

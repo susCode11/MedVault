@@ -10,7 +10,9 @@ import { idlFactory } from '../declarations/medvault_backend/index.js';
 
 export type MedVaultBackend = _SERVICE;
 
-const CANISTER_ID = process.env.MEDVAULT_BACKEND_CANISTER_ID || import.meta.env?.VITE_MEDVAULT_BACKEND_CANISTER_ID;
+import { MEDVAULT_BACKEND_CANISTER_ID } from './env';
+
+const CANISTER_ID = MEDVAULT_BACKEND_CANISTER_ID;
 
 if (!CANISTER_ID) {
   console.warn("MEDVAULT_BACKEND_CANISTER_ID is not defined in the environment.");
