@@ -12,7 +12,7 @@ import { useState } from 'react';
 
 export const PatientDetail: React.FC = () => {
   const { id } = useParams();
-  const { records = [], isFetching: isLoading } = useRecordsList();
+  const { records = [], isFetching: isLoading } = useRecordsList(id);
   const { requestAccess, isRequesting: isPending } = useAccessRequest();
   const { success, error: notifyError } = useNotificationStore();
   const [selectedRecord, setSelectedRecord] = useState<MedicalRecord | null>(null);
@@ -27,7 +27,7 @@ export const PatientDetail: React.FC = () => {
     try {
       await requestAccess({
         patientId: id as string,
-        recordIds: [], // Request access to all records
+        recordIds: ['*'], // Request access to all records
         requestedDurationHours: 24, // Default to 24 hour access
         reason: 'Routine consultation',
       });

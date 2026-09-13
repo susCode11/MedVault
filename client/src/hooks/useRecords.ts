@@ -56,18 +56,21 @@ const PAGE_SIZE = 12;
  * Paginated, filtered, infinite-scroll list of records.
  * Reads filters from recordStore — no need to pass them manually.
  *
+ * @param explicitOwnerId If provided, fetches records for this specific user instead of the logged-in user.
+ *
  * Usage:
  *   const { records, isFetching, fetchNextPage, hasNextPage } = useRecordsList();
+ *   const { records } = useRecordsList('patient-principal-id');
  */
-export function useRecordsList() {
+export function useRecordsList(explicitOwnerId?: string) {
   const { actor, isReady } = useCanisterActor();
   const principal = useAuthStore((s) => s.principal);
   const filters   = useRecordStore((s) => s.filters);
 
   const query = useInfiniteQuery({
-    queryKey: CANISTER_QUERY_KEYS.records.list(filters),
+    queryKey: CANISTER_QUERY_KEYS.records.list({ ...filters, ownerId: explicitOwnerId }),
     queryFn: async ({ pageParam = 1 }) => {
-      const ownerId = principal;
+      const ownerId = explicitOwnerId || principal;
       const category = filters.category === 'all' ? null : filters.category;
       
       const res = await (actor as any).listRecords(

@@ -86,19 +86,24 @@ export function listRecords(ownerId: string | null = null, category: string | nu
     } else if (user.role === 'doctor') {
         // If doctor provided an ownerId, they must have access grants for that patient
         if (ownerId) {
-            const grants = accessStorage.values();
-            const hasAccess = grants.some(g => 
-                g.granteePrincipal === caller && 
-                g.patientPrincipal === ownerId && 
-                (g.recordIds.includes('*') || g.recordIds.length > 0) && // Simplified check for list
-                !isExpired(g.expiresAt) &&
-                g.revokedAt.length === 0
-            );
-            
-            if (hasAccess) {
-                allRecords = allRecords.filter(r => r.patientPrincipal === ownerId);
+            if (ownerId === caller) {
+                // Doctor is viewing their own records (acting as a patient)
+                allRecords = allRecords.filter(r => r.patientPrincipal === caller);
             } else {
-                allRecords = [];
+                const grants = accessStorage.values();
+                const hasAccess = grants.some(g => 
+                    g.granteePrincipal === caller && 
+                    g.patientPrincipal === ownerId && 
+                    (g.recordIds.includes('*') || g.recordIds.length > 0) && // Simplified check for list
+                    !isExpired(g.expiresAt) &&
+                    g.revokedAt.length === 0
+                );
+                
+                if (hasAccess) {
+                    allRecords = allRecords.filter(r => r.patientPrincipal === ownerId);
+                } else {
+                    allRecords = [];
+                }
             }
         } else {
             // Otherwise show records the doctor created
