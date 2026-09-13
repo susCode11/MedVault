@@ -3,15 +3,25 @@ import { useParams, Link } from 'react-router-dom';
 import { Button } from '../../components/ui/Button';
 import { ArrowLeft, ShieldAlert } from 'lucide-react';
 import { RecordList } from '../../components/records/RecordList';
+import { RecordViewer } from '../../components/records/RecordViewer';
+import { MedicalRecord } from '../../types/records';
 import { useRecordsList } from '../../hooks/useRecords';
 import { useAccessRequest } from '../../hooks/useAccess';
 import { useNotificationStore } from '../../store/notificationStore';
+import { useState } from 'react';
 
 export const PatientDetail: React.FC = () => {
   const { id } = useParams();
   const { records = [], isFetching: isLoading } = useRecordsList();
   const { requestAccess, isRequesting: isPending } = useAccessRequest();
   const { success, error: notifyError } = useNotificationStore();
+  const [selectedRecord, setSelectedRecord] = useState<MedicalRecord | null>(null);
+  const [isViewerOpen, setIsViewerOpen] = useState(false);
+
+  const handleRecordClick = (record: MedicalRecord) => {
+    setSelectedRecord(record);
+    setIsViewerOpen(true);
+  };
 
   const handleRequestAccess = async () => {
     try {
@@ -52,7 +62,13 @@ export const PatientDetail: React.FC = () => {
       </div>
 
       {/* Render records if access is granted, otherwise show placeholder */}
-      <RecordList records={records} isLoading={isLoading} onRecordClick={() => {}} />
+      <RecordList records={records} isLoading={isLoading} onRecordClick={handleRecordClick} />
+
+      <RecordViewer 
+        record={selectedRecord} 
+        isOpen={isViewerOpen} 
+        onClose={() => setIsViewerOpen(false)} 
+      />
     </div>
   );
 };
