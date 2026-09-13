@@ -9,7 +9,10 @@
     "deploy:backend": "dfx deploy medvault_backend",
     "dev:client": "cd client && npm run dev",
     "typecheck:server": "cd server && npx tsc --noEmit",
-    "typecheck:client": "cd client && npx tsc --noEmit"
+    "typecheck:client": "cd client && npx tsc --noEmit",
+    "docker:up": "docker compose up -d",
+    "docker:down": "docker compose down",
+    "docker:logs": "docker compose logs -f"
   },
   "devDependencies": {
     "azle": "^0.29.0",

@@ -1,0 +1,31 @@
+FROM node:20-bullseye
+
+# Install required system dependencies
+RUN apt-get update && apt-get install -y \
+    curl \
+    git \
+    libunwind8 \
+    sudo \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install dfx
+ENV DFX_VERSION=0.25.0
+RUN sh -ci "$(curl -fsSL https://internetcomputer.org/install.sh)"
+
+# Add dfx to PATH for all users
+ENV PATH="/usr/local/bin:${PATH}"
+
+# Set up the working directory
+WORKDIR /app
+
+# Ensure correct permissions for the default node user
+RUN chown -R node:node /app
+
+# Expose ports for dfx replica and Vite client
+EXPOSE 4943 5173
+
+# Set node as the default user
+USER node
+
+# Setup entrypoint to keep container running if needed
+CMD ["tail", "-f", "/dev/null"]
