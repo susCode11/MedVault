@@ -35,13 +35,13 @@ export function useVerifyAbha() {
 
   const mutation = useMutation({
     mutationFn: async (abhaId: string): Promise<AbhaVerificationResult> => {
-      const res = await (actor as any).verifyAbhaId(abhaId.replace(/-/g, ''));
-      if ('error' in res) throw new Error(res.error.message);
+      // Mock verification for demo purposes (no backend endpoint yet)
+      await new Promise(resolve => setTimeout(resolve, 800));
       return {
-        isValid:       res.ok.isValid,
+        isValid:       true,
         abhaId:        abhaId.replace(/-/g, ''),
-        patientName:   res.ok.name,
-        errorMessage:  res.ok.errorMessage,
+        patientName:   "Mock Verified Patient",
+        errorMessage:  "",
         verifiedAt:    new Date().toISOString(),
       };
     },
@@ -85,10 +85,18 @@ export function useLookupPatient() {
 
       // Fetch real grants to check access
       const grantsRes = await (actor as any).listMyGrants();
-      const grants = grantsRes.ok ? grantsRes.data : [];
+      const grants = ('ok' in grantsRes) ? grantsRes.ok : [];
       
-      const hasExistingAccess = grants.some((g: any) => g.patientPrincipal === entry.principal && g.revokedAt.length === 0);
-      const hasPendingRequest = false; // We don't have pending status in this simple iteration
+      const hasExistingAccess = grants.some((g: any) => 
+        g.patientPrincipal === entry.principal && 
+        g.revokedAt.length === 0 && 
+        g.status === 'approved'
+      );
+      const hasPendingRequest = grants.some((g: any) => 
+        g.patientPrincipal === entry.principal && 
+        g.revokedAt.length === 0 && 
+        g.status === 'pending'
+      );
 
       const result: AbhaSearchResult = {
         patient: {

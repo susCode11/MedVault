@@ -11,8 +11,8 @@ async function ensureConfigFetched() {
     const actor = await getBackendActor();
     const result = await actor.getPinataConfig();
     if ('ok' in result) {
-      pinataJwt = result.ok.jwt;
-      pinataGateway = result.ok.gateway;
+      pinataJwt = result.ok.jwt || import.meta.env.VITE_PINATA_JWT || '';
+      pinataGateway = result.ok.gateway || import.meta.env.VITE_PINATA_GATEWAY || '';
     }
     isConfigFetched = true;
   } catch (err) {
@@ -34,7 +34,7 @@ export async function getPinata(): Promise<PinataSDK> {
   return pinataInstance;
 }
 
-const mockStorage = new Map<string, Blob>();
+
 
 export interface UploadMetadata {
   ownerPrincipal: string;
@@ -50,11 +50,7 @@ export async function uploadEncryptedBlob(
   await ensureConfigFetched();
 
   if (!pinataJwt || pinataJwt === 'your_pinata_jwt_here') {
-    console.warn("[Mock] Pinata JWT is missing. Simulating upload to local memory.");
-    const cid = `mock-cid-${Date.now()}`;
-    mockStorage.set(cid, blob);
-    await new Promise(resolve => setTimeout(resolve, 1500));
-    return cid;
+    throw new Error("Pinata configuration missing! Please add VITE_PINATA_JWT to your backend .env file to enable IPFS uploads.");
   }
 
   const pinata = await getPinata();
@@ -82,18 +78,8 @@ export async function uploadEncryptedBlob(
 export async function fetchFromIPFS(cid: string): Promise<Blob> {
   await ensureConfigFetched();
 
-  if (cid.startsWith('mock-cid-')) {
-    console.warn("[Mock] Simulating fetch from local memory.");
-    await new Promise(resolve => setTimeout(resolve, 800));
-    const blob = mockStorage.get(cid);
-    if (!blob) throw new Error("Mock file not found in current session memory.");
-    return blob;
-  }
-
   if (!pinataGateway || pinataGateway === 'your_pinata_gateway_here') {
-    console.warn("[Mock] Pinata Gateway not configured. Returning dummy encrypted blob.");
-    await new Promise(resolve => setTimeout(resolve, 800));
-    return new Blob(["dummy encrypted data"]);
+    throw new Error("Pinata configuration missing! Please add VITE_PINATA_GATEWAY to your backend .env file to view records.");
   }
 
   const gateway = pinataGateway.startsWith('https://')

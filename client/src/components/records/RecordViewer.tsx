@@ -97,7 +97,27 @@ export const RecordViewer: React.FC<RecordViewerProps> = ({ record, isOpen, onCl
           </div>
 
           <div className="mt-auto pt-6 flex flex-col gap-3">
-            <Button variant="outline" className="w-full" leftIcon={<Download size={18} />} disabled={!objectUrl}>
+            <Button 
+              variant="outline" 
+              className="w-full" 
+              leftIcon={<Download size={18} />} 
+              disabled={!objectUrl}
+              onClick={() => {
+                if (objectUrl) {
+                  const a = document.createElement('a');
+                  a.href = objectUrl;
+                  // Map some common mimetypes to extensions
+                  let ext = '';
+                  if (record.fileType === 'application/pdf') ext = '.pdf';
+                  else if (record.fileType === 'image/jpeg') ext = '.jpg';
+                  else if (record.fileType === 'image/png') ext = '.png';
+                  a.download = `${record.title.replace(/\s+/g, '_')}${ext}`;
+                  document.body.appendChild(a);
+                  a.click();
+                  document.body.removeChild(a);
+                }
+              }}
+            >
               Download File
             </Button>
             <Button variant="primary" className="w-full" leftIcon={<Share2 size={18} />}>

@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "setup": "npm install && cd server && npm install && cd ../client && npm install",
-    "start:replica": "dfx start --clean",
+    "start:replica": "env LD_LIBRARY_PATH=\"$PWD/libunwind/usr/lib/x86_64-linux-gnu:$LD_LIBRARY_PATH\" dfx start --clean",
     "deploy": "dfx deploy",
     "deploy:backend": "dfx deploy medvault_backend",
     "dev:client": "cd client && npm run dev",

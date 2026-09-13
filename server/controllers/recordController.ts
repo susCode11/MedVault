@@ -6,7 +6,7 @@ import { insertAudit } from '../middleware/audit.js';
 import { generateUuid } from '../utils/serialize.js';
 import { nowNanos, isExpired } from '../utils/time.js';
 
-export function createRecord(patientPrincipal: string, title: string, description: string, recordType: string, ipfsCid: string, encryptionKeyId: string): string {
+export function createRecord(patientPrincipal: string, title: string, description: string, recordType: string, ipfsCid: string, encryptionKeyId: string, fileType: string, fileSize: bigint): string {
     const caller = requireAuth();
     const user = usersStorage.get(caller);
     
@@ -31,12 +31,14 @@ export function createRecord(patientPrincipal: string, title: string, descriptio
     const record: MedicalRecord = {
         id: recordId,
         patientPrincipal,
-        doctorPrincipal: caller,
+        doctorPrincipal: user.role === 'patient' ? patientPrincipal : caller,
         title,
         description,
         recordType,
         ipfsCid,
         encryptionKeyId,
+        fileType,
+        fileSize,
         createdAt: nowNanos(),
         updatedAt: nowNanos()
     };
@@ -121,4 +123,22 @@ export function listRecords(ownerId: string | null = null, category: string | nu
     const items = allRecords.slice(startIndex, startIndex + pageSize);
 
     return { items, total };
+}
+
+export function deleteRecord(recordId: string): boolean {
+    const caller = requireAuth();
+    const record = recordsStorage.get(recordId);
+    
+    if (!record) {
+        throw new CanisterError('VALIDATION_ERROR', "Record not found");
+    }
+    
+    if (record.patientPrincipal !== caller && requireRole('admin') !== caller) {
+        throw new CanisterError('VALIDATION_ERROR', "Forbidden: Only the owner can delete this record");
+    }
+    
+    recordsStorage.remove(recordId);
+    insertAudit(caller, "delete_record", recordId, record.patientPrincipal, "Record deleted");
+    
+    return true;
 }

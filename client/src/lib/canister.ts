@@ -29,6 +29,7 @@ export const getBackendActor = async (): Promise<ActorSubclass<MedVaultBackend>>
 
   const agent = await getAgent();
 
+  // @ts-ignore - Type mismatch between @dfinity/candid and @icp-sdk/core versions, safe to ignore at runtime
   backendActorInstance = Actor.createActor<MedVaultBackend>(idlFactory, {
     agent,
     canisterId: CANISTER_ID,

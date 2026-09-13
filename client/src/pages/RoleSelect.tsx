@@ -113,6 +113,16 @@ export const RoleSelect: React.FC = () => {
             Continue
           </Button>
         </motion.div>
+        
+        <motion.div variants={itemVariants} className="flex justify-center mt-6">
+          <Button 
+            variant="ghost" 
+            onClick={() => useAuthStore.getState().logout()}
+            className="text-gray-400 hover:text-white"
+          >
+            Logout & Switch Account
+          </Button>
+        </motion.div>
       </motion.div>
     </div>
   );

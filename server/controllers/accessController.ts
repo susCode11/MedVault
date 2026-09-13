@@ -13,24 +13,17 @@ export function requestAccess(patientId: string, recordIds: string[], reason: st
     if (!patient || patient.role !== 'patient') {
         throw new CanisterError('VALIDATION_ERROR', "Target user is not a registered patient");
     }
-    
-    // In this simplified model, an access request acts as a grant that's created but we'll set it as "pending"
-    // However, our AccessGrant structure just has "expiresAt". If we want a strict request/approve flow, 
-    // we would need a status field. For now, since the frontend expects a `requestAccess` mutation
-    // that creates a pending grant, let's just create a grant with `revokedAt` set to some "pending" flag,
-    // or properly we should add a status to AccessGrant.
-    // The previous monolith just had `grantAccess` (patient grants to doctor).
-    // Let's implement patient granting for now as `grantAccess`.
 
     const grantId = generateUuid();
     const grant: AccessGrant = {
         id: grantId,
-        patientPrincipal: patientId, // Requested patient
+        patientPrincipal: patientId,
         granteePrincipal: doctor,
         recordIds,
         expiresAt: nowNanos() + hoursToNanos(requestedDurationHours),
         createdAt: nowNanos(),
-        revokedAt: []
+        revokedAt: [],
+        status: 'pending'
     };
     
     accessStorage.insert(grantId, grant);
@@ -39,32 +32,55 @@ export function requestAccess(patientId: string, recordIds: string[], reason: st
     return grantId;
 }
 
-export function grantAccess(granteePrincipal: string, recordIds: string[], expiresInHours: number): string {
+export function approveGrant(grantId: string, expiresAtStr: [string] | []): string {
     const patient = requireRole('patient');
+    const grant = accessStorage.get(grantId);
     
-    const grantee = usersStorage.get(granteePrincipal);
-    if (!grantee || grantee.role !== 'doctor') {
-        throw new CanisterError('VALIDATION_ERROR', "Grantee must be a registered doctor");
+    if (!grant) throw new CanisterError('VALIDATION_ERROR', "Grant not found");
+    if (grant.patientPrincipal !== patient) throw new CanisterError('VALIDATION_ERROR', "Only the patient can approve this grant");
+    if (grant.status !== 'pending') throw new CanisterError('VALIDATION_ERROR', "Grant is not pending");
+
+    let expiresAt = grant.expiresAt;
+    if (expiresAtStr.length > 0 && expiresAtStr[0] !== '') {
+        const dateStr = expiresAtStr[0] as string;
+        const parsed = Date.parse(dateStr);
+        if (!isNaN(parsed)) {
+            expiresAt = BigInt(parsed) * 1000000n;
+        }
     }
     
-    const grantId = generateUuid();
-    const grant: AccessGrant = {
-        id: grantId,
-        patientPrincipal: patient,
-        granteePrincipal,
-        recordIds,
-        expiresAt: nowNanos() + hoursToNanos(expiresInHours),
-        createdAt: nowNanos(),
-        revokedAt: []
+    const updatedGrant: AccessGrant = {
+        ...grant,
+        expiresAt,
+        status: 'approved'
     };
     
-    accessStorage.insert(grantId, grant);
-    insertAudit(patient, "grant_access", null, granteePrincipal, `Granted access for ${expiresInHours} hours`);
+    accessStorage.insert(grantId, updatedGrant);
+    insertAudit(patient, "approve_grant", null, grant.granteePrincipal, "Access request approved");
     
     return grantId;
 }
 
-export function revokeAccess(grantId: string): boolean {
+export function denyGrant(grantId: string, reason: string): string {
+    const patient = requireRole('patient');
+    const grant = accessStorage.get(grantId);
+    
+    if (!grant) throw new CanisterError('VALIDATION_ERROR', "Grant not found");
+    if (grant.patientPrincipal !== patient) throw new CanisterError('VALIDATION_ERROR', "Only the patient can deny this grant");
+    if (grant.status !== 'pending') throw new CanisterError('VALIDATION_ERROR', "Grant is not pending");
+
+    const updatedGrant: AccessGrant = {
+        ...grant,
+        status: 'denied'
+    };
+    
+    accessStorage.insert(grantId, updatedGrant);
+    insertAudit(patient, "deny_grant", null, grant.granteePrincipal, `Access request denied. Reason: ${reason}`);
+    
+    return grantId;
+}
+
+export function revokeGrant(grantId: string, reason: string): string {
     const patient = requireRole('patient');
     const grant = accessStorage.get(grantId);
     
@@ -73,13 +89,14 @@ export function revokeAccess(grantId: string): boolean {
     
     const updatedGrant: AccessGrant = {
         ...grant,
-        revokedAt: [nowNanos()]
+        revokedAt: [nowNanos()],
+        status: 'revoked'
     };
     
     accessStorage.insert(grantId, updatedGrant);
-    insertAudit(patient, "revoke_access", null, grant.granteePrincipal, "Access revoked");
+    insertAudit(patient, "revoke_grant", null, grant.granteePrincipal, `Access revoked. Reason: ${reason}`);
     
-    return true;
+    return grantId;
 }
 
 export function listMyGrants(): AccessGrant[] {
@@ -93,5 +110,11 @@ export function listMyGrants(): AccessGrant[] {
     } else if (user.role === 'doctor') {
         return allGrants.filter(g => g.granteePrincipal === caller);
     }
+    return [];
+}
+
+export function getConsentTimeline(grantId: string): any[] {
+    // Simplified stub to satisfy frontend
+    // In reality, this would query auditStorage for the specific grant ID
     return [];
 }

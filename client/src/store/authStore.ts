@@ -371,14 +371,10 @@ export const useAuthStore = create<AuthStore>()(
         // refreshSession() re-validates on every page load
       }),
       // After rehydrating from localStorage, validate the restored session
-      onRehydrateStorage: () => (state) => {
-        if (state) {
-          // Trigger session refresh on app boot — self-initialization
-          // This replaces any need for main.tsx to call a bootstrap function
-          state.refreshSession().catch(() => {
-            // Silent fail — user will see login screen
-          });
-        }
+      onRehydrateStorage: () => () => {
+        // We no longer trigger refreshSession here.
+        // It must be triggered by main.tsx AFTER the adapter is injected,
+        // otherwise it fails instantly and silently logs the user out.
       },
     }
   )

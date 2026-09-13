@@ -103,21 +103,21 @@ export function useAccessRequest() {
     mutationFn: async (payload: AccessRequest) => {
       if (!principal || !profile) throw new Error('Not authenticated');
 
-      const res = await (actor as any).requestAccess({
-        ...payload,
-        doctorId:    principal,
-        doctorName:  profile.displayName,
-        patientName: 'Patient', // Real: fetch from ABHA lookup or canister
-      });
+      const res = await (actor as any).requestAccess(
+        payload.patientId,
+        payload.recordIds,
+        payload.reason,
+        payload.requestedDurationHours
+      );
       if ('error' in res) throw new Error(res.error.message);
       return res.ok;
     },
-    onSuccess: (grant) => {
+    onSuccess: () => {
       // Invalidate the doctor's grant list
       queryClient.invalidateQueries({ queryKey: CANISTER_QUERY_KEYS.access.lists() });
       success(
         'Access requested',
-        `Your request has been sent to ${grant.patientName}. You'll be notified when they respond.`
+        `Your request has been sent to the patient. You'll be notified when they respond.`
       );
     },
     onError: (err) => {
@@ -153,7 +153,8 @@ export function useGrantActions() {
 
   const approveMutation = useMutation({
     mutationFn: async (payload: AccessApprovalPayload) => {
-      const res = await (actor as any).approveGrant(payload);
+      const expiresAtOpt = payload.expiresAt ? [payload.expiresAt] : [];
+      const res = await (actor as any).approveGrant(payload.grantId, expiresAtOpt);
       if ('error' in res) throw new Error(res.error.message);
       return res.ok;
     },
@@ -168,7 +169,8 @@ export function useGrantActions() {
 
   const denyMutation = useMutation({
     mutationFn: async (payload: AccessDenialPayload) => {
-      const res = await (actor as any).denyGrant(payload);
+      const reason = payload.reason || "Patient denied the request";
+      const res = await (actor as any).denyGrant(payload.grantId, reason);
       if ('error' in res) throw new Error(res.error.message);
       return res.ok;
     },
@@ -183,7 +185,8 @@ export function useGrantActions() {
 
   const revokeMutation = useMutation({
     mutationFn: async (payload: AccessDenialPayload) => {
-      const res = await (actor as any).revokeGrant(payload);
+      const reason = payload.reason || "Patient revoked the grant";
+      const res = await (actor as any).revokeGrant(payload.grantId, reason);
       if ('error' in res) throw new Error(res.error.message);
       return res.ok;
     },

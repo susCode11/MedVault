@@ -76,6 +76,8 @@ export const MedicalRecordIDL = IDL.Record({
     recordType: IDL.Text,
     ipfsCid: IDL.Text,
     encryptionKeyId: IDL.Text,
+    fileType: IDL.Text,
+    fileSize: IDL.Nat64,
     createdAt: IDL.Nat64,
     updatedAt: IDL.Nat64,
 });
@@ -89,6 +91,8 @@ export type MedicalRecord = {
     recordType: string;
     ipfsCid: string;
     encryptionKeyId: string;
+    fileType: string;
+    fileSize: bigint;
     createdAt: bigint;
     updatedAt: bigint;
 };
@@ -101,6 +105,7 @@ export const AccessGrantIDL = IDL.Record({
     expiresAt: IDL.Nat64,
     createdAt: IDL.Nat64,
     revokedAt: IDL.Opt(IDL.Nat64),
+    status: IDL.Text,
 });
 
 export type AccessGrant = {
@@ -110,7 +115,8 @@ export type AccessGrant = {
     recordIds: string[];
     expiresAt: bigint;
     createdAt: bigint;
-    revokedAt: [bigint] | []; // Opts in Azle are arrays
+    revokedAt: [bigint] | [];
+    status: string;
 };
 
 export const AuditEntryIDL = IDL.Record({

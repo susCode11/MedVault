@@ -13,7 +13,13 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 validateEnv();
 
 // Inject real biometric auth adapter (Internet Identity / WebAuthn)
-useAuthStore.getState().setAdapter(nfidAuthAdapter);
+const authStore = useAuthStore.getState();
+authStore.setAdapter(nfidAuthAdapter);
+
+// Now that adapter is injected, we can safely refresh the session (if one exists in localStorage)
+authStore.refreshSession().catch(() => {
+  // Silent fail — user will see login screen
+});
 
 const queryClient = new QueryClient();
 

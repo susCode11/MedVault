@@ -62941,6 +62941,8 @@ var MedicalRecordIDL = idl_exports2.Record({
   recordType: idl_exports2.Text,
   ipfsCid: idl_exports2.Text,
   encryptionKeyId: idl_exports2.Text,
+  fileType: idl_exports2.Text,
+  fileSize: idl_exports2.Nat64,
   createdAt: idl_exports2.Nat64,
   updatedAt: idl_exports2.Nat64
 });
@@ -62951,7 +62953,8 @@ var AccessGrantIDL = idl_exports2.Record({
   recordIds: idl_exports2.Vec(idl_exports2.Text),
   expiresAt: idl_exports2.Nat64,
   createdAt: idl_exports2.Nat64,
-  revokedAt: idl_exports2.Opt(idl_exports2.Nat64)
+  revokedAt: idl_exports2.Opt(idl_exports2.Nat64),
+  status: idl_exports2.Text
 });
 var AuditEntryIDL = idl_exports2.Record({
   id: idl_exports2.Text,
@@ -63193,7 +63196,7 @@ function updateName(name) {
 }
 
 // server/controllers/recordController.ts
-function createRecord(patientPrincipal, title2, description, recordType, ipfsCid, encryptionKeyId) {
+function createRecord(patientPrincipal, title2, description, recordType, ipfsCid, encryptionKeyId, fileType, fileSize) {
   const caller = requireAuth();
   const user = usersStorage.get(caller);
   if (!user) {
@@ -63213,12 +63216,14 @@ function createRecord(patientPrincipal, title2, description, recordType, ipfsCid
   const record = {
     id: recordId,
     patientPrincipal,
-    doctorPrincipal: caller,
+    doctorPrincipal: user.role === "patient" ? patientPrincipal : caller,
     title: title2,
     description,
     recordType,
     ipfsCid,
     encryptionKeyId,
+    fileType,
+    fileSize,
     createdAt: nowNanos(),
     updatedAt: nowNanos()
   };
@@ -63280,6 +63285,19 @@ function listRecords(ownerId = null, category = null, page = 1, pageSize = 10) {
   const items = allRecords.slice(startIndex, startIndex + pageSize);
   return { items, total };
 }
+function deleteRecord(recordId) {
+  const caller = requireAuth();
+  const record = recordsStorage.get(recordId);
+  if (!record) {
+    throw new CanisterError("VALIDATION_ERROR", "Record not found");
+  }
+  if (record.patientPrincipal !== caller && requireRole("admin") !== caller) {
+    throw new CanisterError("VALIDATION_ERROR", "Forbidden: Only the owner can delete this record");
+  }
+  recordsStorage.remove(recordId);
+  insertAudit(caller, "delete_record", recordId, record.patientPrincipal, "Record deleted");
+  return true;
+}
 
 // server/controllers/accessController.ts
 function requestAccess(patientId, recordIds, reason, requestedDurationHours) {
@@ -63292,49 +63310,67 @@ function requestAccess(patientId, recordIds, reason, requestedDurationHours) {
   const grant = {
     id: grantId,
     patientPrincipal: patientId,
-    // Requested patient
     granteePrincipal: doctor,
     recordIds,
     expiresAt: nowNanos() + hoursToNanos(requestedDurationHours),
     createdAt: nowNanos(),
-    revokedAt: []
+    revokedAt: [],
+    status: "pending"
   };
   accessStorage.insert(grantId, grant);
   insertAudit(doctor, "request_access", null, patientId, `Requested access for ${requestedDurationHours} hours: ${reason}`);
   return grantId;
 }
-function grantAccess(granteePrincipal, recordIds, expiresInHours) {
+function approveGrant(grantId, expiresAtStr) {
   const patient = requireRole("patient");
-  const grantee = usersStorage.get(granteePrincipal);
-  if (!grantee || grantee.role !== "doctor") {
-    throw new CanisterError("VALIDATION_ERROR", "Grantee must be a registered doctor");
+  const grant = accessStorage.get(grantId);
+  if (!grant) throw new CanisterError("VALIDATION_ERROR", "Grant not found");
+  if (grant.patientPrincipal !== patient) throw new CanisterError("VALIDATION_ERROR", "Only the patient can approve this grant");
+  if (grant.status !== "pending") throw new CanisterError("VALIDATION_ERROR", "Grant is not pending");
+  let expiresAt = grant.expiresAt;
+  if (expiresAtStr.length > 0 && expiresAtStr[0] !== "") {
+    const dateStr = expiresAtStr[0];
+    const parsed = Date.parse(dateStr);
+    if (!isNaN(parsed)) {
+      expiresAt = BigInt(parsed) * 1000000n;
+    }
   }
-  const grantId = generateUuid();
-  const grant = {
-    id: grantId,
-    patientPrincipal: patient,
-    granteePrincipal,
-    recordIds,
-    expiresAt: nowNanos() + hoursToNanos(expiresInHours),
-    createdAt: nowNanos(),
-    revokedAt: []
+  const updatedGrant = {
+    ...grant,
+    expiresAt,
+    status: "approved"
   };
-  accessStorage.insert(grantId, grant);
-  insertAudit(patient, "grant_access", null, granteePrincipal, `Granted access for ${expiresInHours} hours`);
+  accessStorage.insert(grantId, updatedGrant);
+  insertAudit(patient, "approve_grant", null, grant.granteePrincipal, "Access request approved");
   return grantId;
 }
-function revokeAccess(grantId) {
+function denyGrant(grantId, reason) {
+  const patient = requireRole("patient");
+  const grant = accessStorage.get(grantId);
+  if (!grant) throw new CanisterError("VALIDATION_ERROR", "Grant not found");
+  if (grant.patientPrincipal !== patient) throw new CanisterError("VALIDATION_ERROR", "Only the patient can deny this grant");
+  if (grant.status !== "pending") throw new CanisterError("VALIDATION_ERROR", "Grant is not pending");
+  const updatedGrant = {
+    ...grant,
+    status: "denied"
+  };
+  accessStorage.insert(grantId, updatedGrant);
+  insertAudit(patient, "deny_grant", null, grant.granteePrincipal, `Access request denied. Reason: ${reason}`);
+  return grantId;
+}
+function revokeGrant(grantId, reason) {
   const patient = requireRole("patient");
   const grant = accessStorage.get(grantId);
   if (!grant) throw new CanisterError("VALIDATION_ERROR", "Grant not found");
   if (grant.patientPrincipal !== patient) throw new CanisterError("VALIDATION_ERROR", "Only the patient can revoke this grant");
   const updatedGrant = {
     ...grant,
-    revokedAt: [nowNanos()]
+    revokedAt: [nowNanos()],
+    status: "revoked"
   };
   accessStorage.insert(grantId, updatedGrant);
-  insertAudit(patient, "revoke_access", null, grant.granteePrincipal, "Access revoked");
-  return true;
+  insertAudit(patient, "revoke_grant", null, grant.granteePrincipal, `Access revoked. Reason: ${reason}`);
+  return grantId;
 }
 function listMyGrants() {
   const caller = requireAuth();
@@ -63346,6 +63382,9 @@ function listMyGrants() {
   } else if (user.role === "doctor") {
     return allGrants.filter((g2) => g2.granteePrincipal === caller);
   }
+  return [];
+}
+function getConsentTimeline(grantId) {
   return [];
 }
 
@@ -63430,8 +63469,8 @@ function listAbuseReports() {
 
 // server/index.ts
 var PaginatedMedicalRecordsIDL = idl_exports2.Record({ items: idl_exports2.Vec(MedicalRecordIDL), total: idl_exports2.Nat32 });
-var _getPinataConfig_dec, _listAbuseReports_dec, _submitAbuseReport_dec, _listEmergencyEvents_dec, _resolveEmergencyAccess_dec, _triggerEmergencyAccess_dec, _listMyGrants_dec, _revokeAccess_dec, _grantAccess_dec, _requestAccess_dec, _listMyRecords_dec, _listRecords_dec, _getRecord_dec, _createRecord_dec, _lookupPatientByAbha_dec, _getProfile_dec, _updateName_dec, _linkLicenseNumber_dec, _linkAbhaId_dec, _registerUser_dec, _init;
-_registerUser_dec = [update3([idl_exports2.Text, idl_exports2.Text, idl_exports2.Text], CanisterResponseIDL(UserProfileIDL))], _linkAbhaId_dec = [update3([idl_exports2.Text], CanisterResponseIDL(UserProfileIDL))], _linkLicenseNumber_dec = [update3([idl_exports2.Text], CanisterResponseIDL(UserProfileIDL))], _updateName_dec = [update3([idl_exports2.Text], CanisterResponseIDL(UserProfileIDL))], _getProfile_dec = [query3([], CanisterResponseIDL(idl_exports2.Opt(UserProfileIDL)))], _lookupPatientByAbha_dec = [query3([idl_exports2.Text], CanisterResponseIDL(idl_exports2.Opt(UserProfileIDL)))], _createRecord_dec = [update3([idl_exports2.Text, idl_exports2.Text, idl_exports2.Text, idl_exports2.Text, idl_exports2.Text, idl_exports2.Text], CanisterResponseIDL(idl_exports2.Text))], _getRecord_dec = [query3([idl_exports2.Text], CanisterResponseIDL(idl_exports2.Opt(MedicalRecordIDL)))], _listRecords_dec = [query3([idl_exports2.Opt(idl_exports2.Text), idl_exports2.Opt(idl_exports2.Text), idl_exports2.Nat32, idl_exports2.Nat32], CanisterResponseIDL(PaginatedMedicalRecordsIDL))], _listMyRecords_dec = [query3([], CanisterResponseIDL(idl_exports2.Vec(MedicalRecordIDL)))], _requestAccess_dec = [update3([idl_exports2.Text, idl_exports2.Vec(idl_exports2.Text), idl_exports2.Text, idl_exports2.Nat32], CanisterResponseIDL(idl_exports2.Text))], _grantAccess_dec = [update3([idl_exports2.Text, idl_exports2.Vec(idl_exports2.Text), idl_exports2.Nat32], CanisterResponseIDL(idl_exports2.Text))], _revokeAccess_dec = [update3([idl_exports2.Text], CanisterResponseIDL(idl_exports2.Bool))], _listMyGrants_dec = [query3([], CanisterResponseIDL(idl_exports2.Vec(AccessGrantIDL)))], _triggerEmergencyAccess_dec = [update3([idl_exports2.Text, idl_exports2.Text, idl_exports2.Text], CanisterResponseIDL(idl_exports2.Text))], _resolveEmergencyAccess_dec = [update3([idl_exports2.Text, idl_exports2.Text], CanisterResponseIDL(idl_exports2.Bool))], _listEmergencyEvents_dec = [query3([], CanisterResponseIDL(idl_exports2.Vec(EmergencyAccessEventIDL)))], _submitAbuseReport_dec = [update3([idl_exports2.Text, idl_exports2.Text], CanisterResponseIDL(idl_exports2.Text))], _listAbuseReports_dec = [query3([], CanisterResponseIDL(idl_exports2.Vec(AbuseReportIDL)))], _getPinataConfig_dec = [query3([], CanisterResponseIDL(PinataConfigIDL))];
+var _getPinataConfig_dec, _listAbuseReports_dec, _submitAbuseReport_dec, _listEmergencyEvents_dec, _resolveEmergencyAccess_dec, _triggerEmergencyAccess_dec, _getConsentTimeline_dec, _listMyGrants_dec, _revokeGrant_dec, _denyGrant_dec, _approveGrant_dec, _requestAccess_dec, _deleteRecord_dec, _listMyRecords_dec, _listRecords_dec, _getRecord_dec, _createRecord_dec, _lookupPatientByAbha_dec, _getProfile_dec, _updateName_dec, _linkLicenseNumber_dec, _linkAbhaId_dec, _registerUser_dec, _init;
+_registerUser_dec = [update3([idl_exports2.Text, idl_exports2.Text, idl_exports2.Text], CanisterResponseIDL(UserProfileIDL))], _linkAbhaId_dec = [update3([idl_exports2.Text], CanisterResponseIDL(UserProfileIDL))], _linkLicenseNumber_dec = [update3([idl_exports2.Text], CanisterResponseIDL(UserProfileIDL))], _updateName_dec = [update3([idl_exports2.Text], CanisterResponseIDL(UserProfileIDL))], _getProfile_dec = [query3([], CanisterResponseIDL(idl_exports2.Opt(UserProfileIDL)))], _lookupPatientByAbha_dec = [query3([idl_exports2.Text], CanisterResponseIDL(idl_exports2.Opt(UserProfileIDL)))], _createRecord_dec = [update3([idl_exports2.Text, idl_exports2.Text, idl_exports2.Text, idl_exports2.Text, idl_exports2.Text, idl_exports2.Text, idl_exports2.Text, idl_exports2.Nat64], CanisterResponseIDL(idl_exports2.Text))], _getRecord_dec = [query3([idl_exports2.Text], CanisterResponseIDL(idl_exports2.Opt(MedicalRecordIDL)))], _listRecords_dec = [query3([idl_exports2.Opt(idl_exports2.Text), idl_exports2.Opt(idl_exports2.Text), idl_exports2.Nat32, idl_exports2.Nat32], CanisterResponseIDL(PaginatedMedicalRecordsIDL))], _listMyRecords_dec = [query3([], CanisterResponseIDL(idl_exports2.Vec(MedicalRecordIDL)))], _deleteRecord_dec = [update3([idl_exports2.Text], CanisterResponseIDL(idl_exports2.Bool))], _requestAccess_dec = [update3([idl_exports2.Text, idl_exports2.Vec(idl_exports2.Text), idl_exports2.Text, idl_exports2.Nat32], CanisterResponseIDL(idl_exports2.Text))], _approveGrant_dec = [update3([idl_exports2.Text, idl_exports2.Opt(idl_exports2.Text)], CanisterResponseIDL(idl_exports2.Text))], _denyGrant_dec = [update3([idl_exports2.Text, idl_exports2.Text], CanisterResponseIDL(idl_exports2.Text))], _revokeGrant_dec = [update3([idl_exports2.Text, idl_exports2.Text], CanisterResponseIDL(idl_exports2.Text))], _listMyGrants_dec = [query3([], CanisterResponseIDL(idl_exports2.Vec(AccessGrantIDL)))], _getConsentTimeline_dec = [query3([idl_exports2.Text], CanisterResponseIDL(idl_exports2.Vec(idl_exports2.Text)))], _triggerEmergencyAccess_dec = [update3([idl_exports2.Text, idl_exports2.Text, idl_exports2.Text], CanisterResponseIDL(idl_exports2.Text))], _resolveEmergencyAccess_dec = [update3([idl_exports2.Text, idl_exports2.Text], CanisterResponseIDL(idl_exports2.Bool))], _listEmergencyEvents_dec = [query3([], CanisterResponseIDL(idl_exports2.Vec(EmergencyAccessEventIDL)))], _submitAbuseReport_dec = [update3([idl_exports2.Text, idl_exports2.Text], CanisterResponseIDL(idl_exports2.Text))], _listAbuseReports_dec = [query3([], CanisterResponseIDL(idl_exports2.Vec(AbuseReportIDL)))], _getPinataConfig_dec = [query3([], CanisterResponseIDL(PinataConfigIDL))];
 var MedVaultBackend = class {
   constructor() {
     __runInitializers(_init, 5, this);
@@ -63454,8 +63493,8 @@ var MedVaultBackend = class {
   lookupPatientByAbha(abhaId) {
     return withResponse(() => lookupPatientByAbha(abhaId));
   }
-  createRecord(patientPrincipal, title2, description, recordType, ipfsCid, encryptionKeyId) {
-    return withResponse(() => createRecord(patientPrincipal, title2, description, recordType, ipfsCid, encryptionKeyId));
+  createRecord(patientPrincipal, title2, description, recordType, ipfsCid, encryptionKeyId, fileType, fileSize) {
+    return withResponse(() => createRecord(patientPrincipal, title2, description, recordType, ipfsCid, encryptionKeyId, fileType, fileSize));
   }
   getRecord(recordId) {
     return withResponse(() => getRecord(recordId));
@@ -63470,17 +63509,27 @@ var MedVaultBackend = class {
   listMyRecords() {
     return withResponse(() => listRecords(null, null, 1, 1e3).items);
   }
+  deleteRecord(recordId) {
+    return withResponse(() => deleteRecord(recordId));
+  }
   requestAccess(patientId, recordIds, reason, requestedDurationHours) {
     return withResponse(() => requestAccess(patientId, recordIds, reason, requestedDurationHours));
   }
-  grantAccess(granteePrincipal, recordIds, expiresInHours) {
-    return withResponse(() => grantAccess(granteePrincipal, recordIds, expiresInHours));
+  approveGrant(grantId, expiresAt) {
+    return withResponse(() => approveGrant(grantId, expiresAt));
   }
-  revokeAccess(grantId) {
-    return withResponse(() => revokeAccess(grantId));
+  denyGrant(grantId, reason) {
+    return withResponse(() => denyGrant(grantId, reason));
+  }
+  revokeGrant(grantId, reason) {
+    return withResponse(() => revokeGrant(grantId, reason));
   }
   listMyGrants() {
     return withResponse(() => listMyGrants());
+  }
+  // Using Text for stub
+  getConsentTimeline(grantId) {
+    return withResponse(() => getConsentTimeline(grantId));
   }
   triggerEmergencyAccess(patientId, reason, justification) {
     return withResponse(() => triggerEmergencyAccess(patientId, reason, justification));
@@ -63519,10 +63568,13 @@ __decorateElement(_init, 1, "createRecord", _createRecord_dec, MedVaultBackend);
 __decorateElement(_init, 1, "getRecord", _getRecord_dec, MedVaultBackend);
 __decorateElement(_init, 1, "listRecords", _listRecords_dec, MedVaultBackend);
 __decorateElement(_init, 1, "listMyRecords", _listMyRecords_dec, MedVaultBackend);
+__decorateElement(_init, 1, "deleteRecord", _deleteRecord_dec, MedVaultBackend);
 __decorateElement(_init, 1, "requestAccess", _requestAccess_dec, MedVaultBackend);
-__decorateElement(_init, 1, "grantAccess", _grantAccess_dec, MedVaultBackend);
-__decorateElement(_init, 1, "revokeAccess", _revokeAccess_dec, MedVaultBackend);
+__decorateElement(_init, 1, "approveGrant", _approveGrant_dec, MedVaultBackend);
+__decorateElement(_init, 1, "denyGrant", _denyGrant_dec, MedVaultBackend);
+__decorateElement(_init, 1, "revokeGrant", _revokeGrant_dec, MedVaultBackend);
 __decorateElement(_init, 1, "listMyGrants", _listMyGrants_dec, MedVaultBackend);
+__decorateElement(_init, 1, "getConsentTimeline", _getConsentTimeline_dec, MedVaultBackend);
 __decorateElement(_init, 1, "triggerEmergencyAccess", _triggerEmergencyAccess_dec, MedVaultBackend);
 __decorateElement(_init, 1, "resolveEmergencyAccess", _resolveEmergencyAccess_dec, MedVaultBackend);
 __decorateElement(_init, 1, "listEmergencyEvents", _listEmergencyEvents_dec, MedVaultBackend);

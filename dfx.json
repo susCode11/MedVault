@@ -3,9 +3,14 @@
     "medvault_backend": {
       "type": "azle",
       "main": "server/index.ts",
+      "gzip": true,
       "custom": {
         "experimental": true
       },
+      "env": [
+        "VITE_PINATA_JWT",
+        "VITE_PINATA_GATEWAY"
+      ],
       "declarations": {
         "output": "client/src/declarations/medvault_backend",
         "node_compatibility": true

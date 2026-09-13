@@ -1,10 +1,11 @@
 import React from 'react';
 import { useAuthStore } from '../../store/authStore';
 import { UserRole } from '../../types/auth';
+import { useAuth } from '../../hooks/useAuth';
 import { Card } from '../ui/Card';
 import { ShieldAlert } from 'lucide-react';
 import { Button } from '../ui/Button';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Navigate } from 'react-router-dom';
 
 interface RoleGuardProps {
   role: UserRole | UserRole[];
@@ -13,19 +14,26 @@ interface RoleGuardProps {
 
 export const RoleGuard: React.FC<RoleGuardProps> = ({ role, children }) => {
   const { role: userRole, profile } = useAuthStore();
+  const { isAuthenticated, isProfileLoading } = useAuth();
   const navigate = useNavigate();
 
-  const isAllowed = Array.isArray(role) ? role.includes(userRole as UserRole) : userRole === role;
+  // If we are authenticated but have no profile after loading, they need to select a role
+  if (isAuthenticated && !isProfileLoading && !profile) {
+    return <Navigate to="/login" replace />;
+  }
+
+  let isAllowed = Array.isArray(role) ? role.includes(userRole as UserRole) : userRole === role;
+  
+  // Doctors implicitly have access to patient routes for their own personal records
+  if (userRole === 'doctor' && (Array.isArray(role) ? role.includes('patient') : role === 'patient')) {
+    isAllowed = true;
+  }
 
   // Enforce onboarding checks for protected routes
   if (isAllowed && profile) {
-    if (userRole === 'patient' && !profile.abhaId) {
-      navigate('/onboarding/abha', { replace: true });
-      return null;
-    }
+    // ABHA linking is optional, so we do not force a redirect here for patients.
     if (userRole === 'doctor' && !(profile as any).licenseNumber) {
-      navigate('/onboarding/doctor', { replace: true });
-      return null;
+      return <Navigate to="/onboarding/doctor" replace />;
     }
   }
 

@@ -10,7 +10,7 @@ interface AuthGuardProps {
 }
 
 export const AuthGuard: React.FC<AuthGuardProps> = ({ children }) => {
-  const { isAuthenticated, isLoading } = useAuth();
+  const { isAuthenticated, isLoading, profile, isProfileLoading } = useAuth();
   const location = useLocation();
 
   if (isLoading) {
@@ -25,6 +25,21 @@ export const AuthGuard: React.FC<AuthGuardProps> = ({ children }) => {
   if (!isAuthenticated) {
     // Redirect to login but save the attempted url
     return <Navigate to="/login" state={{ from: location }} replace />;
+  }
+
+  // If authenticated but no profile, ensure they are in the onboarding flow
+  const isOnboardingRoute = location.pathname.startsWith('/onboarding') || location.pathname === '/role-select';
+  
+  if (!isProfileLoading && !profile && !isOnboardingRoute) {
+    const pendingRole = sessionStorage.getItem('pendingRole');
+    if (pendingRole === 'patient') return <Navigate to="/onboarding/abha" replace />;
+    if (pendingRole === 'doctor') return <Navigate to="/onboarding/doctor" replace />;
+    return <Navigate to="/login" replace />; // Force them back to choose a role if they don't have one
+  }
+
+  // If they have a profile, they shouldn't be in the onboarding flow
+  if (!isProfileLoading && profile && isOnboardingRoute) {
+    return <Navigate to={`/${profile.role}/dashboard`} replace />;
   }
 
   return <>{children}</>;

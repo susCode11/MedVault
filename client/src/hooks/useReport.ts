@@ -42,10 +42,10 @@ export function useSubmitAbuseReport() {
     mutationFn: async (payload: AbuseReportPayload) => {
       if (!principal) throw new Error('Not authenticated');
 
-      const res = await (actor as any).submitAbuseReport({
-        ...payload,
-        reporterId: principal,
-      });
+      const res = await (actor as any).submitAbuseReport(
+        payload.emergencyEventId,
+        payload.description
+      );
       if ('error' in res) throw new Error(res.error.message);
       return res.ok;
     },

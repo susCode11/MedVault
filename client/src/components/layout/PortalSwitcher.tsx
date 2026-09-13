@@ -46,7 +46,7 @@ export const PortalSwitcher: React.FC<PortalSwitcherProps> = ({ collapsed = fals
   }
 
   return (
-    <div className="bg-surface-dark border border-surface-border rounded-xl p-1 flex relative">
+    <div className="bg-surface-dark border border-surface-border rounded-xl p-1 flex relative w-full">
       {/* Animated background pill */}
       <div 
         className={clsx(

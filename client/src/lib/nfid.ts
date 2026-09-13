@@ -3,10 +3,10 @@ import { Identity } from '@dfinity/agent';
 import { Principal } from '@dfinity/principal';
 import { LoginOptions } from '../types/auth';
 import {
-  DFX_NETWORK,
-  INTERNET_IDENTITY_CANISTER_ID,
   MEDVAULT_BACKEND_CANISTER_ID,
+  INTERNET_IDENTITY_CANISTER_ID,
   APP_LOGO_URL,
+  DFX_NETWORK
 } from './env';
 
 // 7 days in nanoseconds
@@ -19,12 +19,9 @@ const DEFAULT_MAX_TIME_TO_LIVE = BigInt(7 * 24 * 60 * 60 * 1_000_000_000);
 export const NFID_CONFIG = {
   appName: 'MedVault',
   appLogo: APP_LOGO_URL,
-  // II 2.0 uses id.ai for production; local dev uses the local canister
-  iiProviderUrl: DFX_NETWORK === 'ic'
-    ? 'https://id.ai'
-    : INTERNET_IDENTITY_CANISTER_ID
-      ? `http://127.0.0.1:4943/?canisterId=${INTERNET_IDENTITY_CANISTER_ID}`
-      : '', // validateEnv() will warn if missing
+  iiProviderUrl: DFX_NETWORK === 'local' 
+    ? `http://127.0.0.1:4943/?canisterId=${INTERNET_IDENTITY_CANISTER_ID}#authorize`
+    : 'https://identity.ic0.app/#authorize',
   targets: MEDVAULT_BACKEND_CANISTER_ID ? [MEDVAULT_BACKEND_CANISTER_ID] : [],
 };
 

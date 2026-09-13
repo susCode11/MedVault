@@ -135,8 +135,8 @@ export function useAuth() {
       setRole(serializedProfile.role);
       return serializedProfile;
     },
-    // Only run this query when authenticated, has a principal, and no profile yet
-    enabled: isAuthenticated && !!principal && !profile && isReady,
+    // Only run this query when authenticated, has a principal, and is ready
+    enabled: isAuthenticated && !!principal && isReady,
     staleTime: Infinity,
     retry: 2,
   });

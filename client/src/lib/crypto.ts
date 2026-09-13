@@ -96,7 +96,7 @@ export async function encryptFile(file: File | Blob): Promise<EncryptedPayload> 
  * Decrypts a Blob using AES-256-GCM.
  * Requires the base64-encoded key+IV retrieved from ICP.
  */
-export async function decryptFile(encryptedBlob: Blob, symmetricKeyId: string): Promise<Blob> {
+export async function decryptFile(encryptedBlob: Blob, symmetricKeyId: string, explicitMimeType?: string): Promise<Blob> {
   // Handle mock data from the prototype seed data
   if (symmetricKeyId.startsWith('enc-key-')) {
     console.warn("[Mock] Bypassing decryption for mock seed data.");
@@ -122,9 +122,25 @@ export async function decryptFile(encryptedBlob: Blob, symmetricKeyId: string): 
     arrayBuffer
   );
 
-  // In a real app we might want to store the original mime type alongside the record,
-  // but for the viewer we can usually deduce it or leave it generic until downloaded.
-  return new Blob([decryptedBuffer]);
+  let mimeType = explicitMimeType || 'application/octet-stream';
+
+  // Only sniff magic bytes if we don't have a specific explicit mime type or if it's octet-stream
+  if (!explicitMimeType || explicitMimeType === 'application/octet-stream') {
+    const arr = new Uint8Array(decryptedBuffer).subarray(0, 4);
+    const header = Array.from(arr).map(b => b.toString(16).padStart(2, '0')).join('').toUpperCase();
+    
+    if (header.startsWith('25504446')) { // %PDF
+      mimeType = 'application/pdf';
+    } else if (header.startsWith('FFD8FF')) {
+      mimeType = 'image/jpeg';
+    } else if (header.startsWith('89504E47')) {
+      mimeType = 'image/png';
+    } else if (header.startsWith('504B0304')) {
+      mimeType = 'application/zip';
+    }
+  }
+
+  return new Blob([decryptedBuffer], { type: mimeType });
 }
 
 // ---------------------------------------------------------------------------

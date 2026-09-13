@@ -59,9 +59,9 @@ export default class MedVaultBackend {
     // RECORD MANAGEMENT
     // ==========================================
     
-    @update([IDL.Text, IDL.Text, IDL.Text, IDL.Text, IDL.Text, IDL.Text], CanisterResponseIDL(IDL.Text))
-    createRecord(patientPrincipal: string, title: string, description: string, recordType: string, ipfsCid: string, encryptionKeyId: string): CanisterResponse<string> {
-        return withResponse(() => recordCtrl.createRecord(patientPrincipal, title, description, recordType, ipfsCid, encryptionKeyId));
+    @update([IDL.Text, IDL.Text, IDL.Text, IDL.Text, IDL.Text, IDL.Text, IDL.Text, IDL.Nat64], CanisterResponseIDL(IDL.Text))
+    createRecord(patientPrincipal: string, title: string, description: string, recordType: string, ipfsCid: string, encryptionKeyId: string, fileType: string, fileSize: bigint): CanisterResponse<string> {
+        return withResponse(() => recordCtrl.createRecord(patientPrincipal, title, description, recordType, ipfsCid, encryptionKeyId, fileType, fileSize));
     }
 
     @query([IDL.Text], CanisterResponseIDL(IDL.Opt(MedicalRecordIDL)))
@@ -83,6 +83,11 @@ export default class MedVaultBackend {
         return withResponse(() => recordCtrl.listRecords(null, null, 1, 1000).items);
     }
     
+    @update([IDL.Text], CanisterResponseIDL(IDL.Bool))
+    deleteRecord(recordId: string): CanisterResponse<boolean> {
+        return withResponse(() => recordCtrl.deleteRecord(recordId));
+    }
+    
     // ==========================================
     // ACCESS MANAGEMENT
     // ==========================================
@@ -92,19 +97,29 @@ export default class MedVaultBackend {
         return withResponse(() => accessCtrl.requestAccess(patientId, recordIds, reason, requestedDurationHours));
     }
 
-    @update([IDL.Text, IDL.Vec(IDL.Text), IDL.Nat32], CanisterResponseIDL(IDL.Text))
-    grantAccess(granteePrincipal: string, recordIds: string[], expiresInHours: number): CanisterResponse<string> {
-        return withResponse(() => accessCtrl.grantAccess(granteePrincipal, recordIds, expiresInHours));
+    @update([IDL.Text, IDL.Opt(IDL.Text)], CanisterResponseIDL(IDL.Text))
+    approveGrant(grantId: string, expiresAt: [string] | []): CanisterResponse<string> {
+        return withResponse(() => accessCtrl.approveGrant(grantId, expiresAt));
     }
 
-    @update([IDL.Text], CanisterResponseIDL(IDL.Bool))
-    revokeAccess(grantId: string): CanisterResponse<boolean> {
-        return withResponse(() => accessCtrl.revokeAccess(grantId));
+    @update([IDL.Text, IDL.Text], CanisterResponseIDL(IDL.Text))
+    denyGrant(grantId: string, reason: string): CanisterResponse<string> {
+        return withResponse(() => accessCtrl.denyGrant(grantId, reason));
+    }
+
+    @update([IDL.Text, IDL.Text], CanisterResponseIDL(IDL.Text))
+    revokeGrant(grantId: string, reason: string): CanisterResponse<string> {
+        return withResponse(() => accessCtrl.revokeGrant(grantId, reason));
     }
 
     @query([], CanisterResponseIDL(IDL.Vec(AccessGrantIDL)))
     listMyGrants(): CanisterResponse<AccessGrant[]> {
         return withResponse(() => accessCtrl.listMyGrants());
+    }
+
+    @query([IDL.Text], CanisterResponseIDL(IDL.Vec(IDL.Text))) // Using Text for stub
+    getConsentTimeline(grantId: string): CanisterResponse<any[]> {
+        return withResponse(() => accessCtrl.getConsentTimeline(grantId));
     }
 
     // ==========================================

@@ -10,6 +10,7 @@ export default defineConfig(({ mode }) => {
   const clientEnv = loadEnv(mode, process.cwd(), '');
   const env = { ...rootEnv, ...clientEnv };
   return {
+  envDir: path.resolve(__dirname, '..'),
   plugins: [
     react(), 
     nodePolyfills(),
@@ -37,6 +38,7 @@ export default defineConfig(({ mode }) => {
     },
   },
   server: {
+    host: 'localhost',
     port: 3000,
     proxy: {
       // Workstream 1: Updated proxy target to match DFX local replica port

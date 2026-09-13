@@ -37,8 +37,8 @@ function mapBackendRecord(raw: any): MedicalRecord {
     description: raw.description,
     ipfsCid: raw.ipfsCid,
     encryptedSymmetricKey: raw.encryptionKeyId,
-    fileType: 'application/octet-stream', // Fallback, not stored on backend
-    fileSize: 0, // Fallback, not stored on backend
+    fileType: raw.fileType || 'application/octet-stream',
+    fileSize: Number(raw.fileSize) || 0,
     tags: [], // Fallback, not stored on backend
     uploadedBy: raw.doctorPrincipal || raw.patientPrincipal,
     createdAt: new Date(Number(raw.createdAt) / 1000000).toISOString(),
@@ -210,7 +210,9 @@ export function useUploadRecord() {
           payload.description,     // description
           payload.category,        // recordType
           cid,                     // ipfsCid
-          encryptedSymmetricKey    // encryptionKeyId
+          encryptedSymmetricKey,   // encryptionKeyId
+          payload.file.type || 'application/octet-stream', // fileType
+          BigInt(payload.file.size) // fileSize
         );
 
         if ('error' in res) throw new Error(res.error.message);
@@ -315,7 +317,8 @@ export function useViewRecord(recordId: string | null) {
       // Step 2: Decrypt via Web Crypto API
       const decryptedBlob = await decryptFile(
         encryptedBlob,
-        record.encryptedSymmetricKey
+        record.encryptedSymmetricKey,
+        record.fileType
       );
 
       // Step 3: Create object URL for rendering

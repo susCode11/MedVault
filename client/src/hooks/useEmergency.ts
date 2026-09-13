@@ -121,15 +121,17 @@ export function useTriggerEmergency() {
     mutationFn: async (payload: EmergencyAccessPayload) => {
       if (!principal || !profile) throw new Error('Not authenticated');
 
-      const res = await (actor as any).triggerEmergency({
-        ...payload,
-        doctorId:          principal,
-        doctorName:        profile.displayName,
-        doctorAffiliation: profile.affiliation ?? 'Unknown Institution',
-        patientName:       'Patient', // Real: resolve from ABHA lookup
-      });
+      const res = await (actor as any).triggerEmergencyAccess(
+        payload.patientId,
+        payload.reason,
+        payload.justification
+      );
       if ('error' in res) throw new Error(res.error.message);
-      return res.ok;
+      
+      return {
+        id: res.ok,
+        patientName: 'the patient',
+      };
     },
     onSuccess: (event) => {
       // Invalidate both doctor and patient emergency event lists
@@ -175,7 +177,7 @@ export function useAcknowledgeEmergency() {
 
   const mutation = useMutation({
     mutationFn: async (eventId: string) => {
-      const res = await (actor as any).acknowledgeEmergency(eventId);
+      const res = await (actor as any).resolveEmergencyAccess(eventId, 'acknowledged');
       if ('error' in res) throw new Error(res.error.message);
       return res.ok;
     },

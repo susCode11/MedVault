@@ -26,7 +26,7 @@ export const DoctorPatients: React.FC = () => {
       }
       if (res.ok && res.ok.length > 0) {
         // Patient found, navigate to their detail page using their actual Principal ID
-        navigate(`/doctor/patients/${res.ok[0].id}`);
+        navigate(`/doctor/patients/${res.ok[0].principal}`);
       } else {
         error('Patient not found', 'No patient found with that ABHA ID. Please check and try again.');
       }

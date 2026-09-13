@@ -69,14 +69,16 @@ export function useEncryption() {
   const decryptFile = useCallback(
     async (
       encryptedFile: Blob,
-      encryptedSymmetricKey: string
+      encryptedSymmetricKey: string,
+      explicitMimeType?: string
     ): Promise<Blob> => {
       setIsDecrypting(true);
       setDecryptError(null);
       try {
         const blob = await cryptoDecryptFile(
           encryptedFile,
-          encryptedSymmetricKey
+          encryptedSymmetricKey,
+          explicitMimeType
         );
         return blob;
       } catch (err) {

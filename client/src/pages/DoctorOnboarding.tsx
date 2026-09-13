@@ -10,6 +10,7 @@ import { ShieldAlert, CheckCircle, Stethoscope } from 'lucide-react';
 import { useCanisterActor } from '../hooks/useCanister';
 import { useAuth } from '../hooks/useAuth';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useQueryClient } from '@tanstack/react-query';
 
 const stepVariants = {
   initial: { opacity: 0, x: 20 },
@@ -28,6 +29,7 @@ export const DoctorOnboarding: React.FC = () => {
   const { registerProfile } = useAuth();
   const { error, success } = useNotificationStore();
   const { actor } = useCanisterActor();
+  const queryClient = useQueryClient();
 
   const handleVerify = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -78,10 +80,16 @@ export const DoctorOnboarding: React.FC = () => {
         // Update local state with the new profile containing the license
         const currentProfile = useAuthStore.getState().profile;
         if (currentProfile) {
-          useAuthStore.getState().setProfile({
+          const updatedProfile = {
             ...currentProfile,
             licenseNumber: updateRes.ok.licenseNumber
-          });
+          };
+          useAuthStore.getState().setProfile(updatedProfile);
+          
+          // Force TanStack Query cache update to prevent stale data overwriting authStore later
+          if (principal) {
+            queryClient.invalidateQueries({ queryKey: ['users'] });
+          }
         }
       } else {
         console.warn("Backend actor not ready, skipping canister update in UI dev mode");
