@@ -1,6 +1,6 @@
 import { CanisterError } from '../lib/error.js';
 import { MedicalRecord } from '../lib/types.js';
-import { recordsStorage, accessStorage, usersStorage } from '../lib/storage.js';
+import { recordsStorage, accessStorage, usersStorage, emergencyStorage } from '../lib/storage.js';
 import { requireAuth, requireRole } from '../middleware/auth.js';
 import { insertAudit } from '../middleware/audit.js';
 import { generateUuid } from '../utils/serialize.js';
@@ -65,7 +65,19 @@ export function getRecord(recordId: string): [MedicalRecord] | [] {
             !isExpired(g.expiresAt) &&
             g.revokedAt.length === 0
         );
-        if (!hasAccess && requireRole('admin') !== caller) {
+
+        // Check if there is an active emergency access event
+        let hasEmergencyAccess = false;
+        if (!hasAccess) {
+            const emergencies = emergencyStorage.values();
+            hasEmergencyAccess = emergencies.some(e => 
+                e.requesterPrincipal === caller && 
+                e.patientPrincipal === record.patientPrincipal && 
+                (e.status === 'pending' || e.status === 'approved')
+            );
+        }
+
+        if (!hasAccess && !hasEmergencyAccess && requireRole('admin') !== caller) {
             throw new CanisterError('VALIDATION_ERROR', "Forbidden: No access to this record");
         }
     }
@@ -98,8 +110,18 @@ export function listRecords(ownerId: string | null = null, category: string | nu
                     !isExpired(g.expiresAt) &&
                     g.revokedAt.length === 0
                 );
+
+                let hasEmergencyAccess = false;
+                if (!hasAccess) {
+                    const emergencies = emergencyStorage.values();
+                    hasEmergencyAccess = emergencies.some(e => 
+                        e.requesterPrincipal === caller && 
+                        e.patientPrincipal === ownerId && 
+                        (e.status === 'pending' || e.status === 'approved')
+                    );
+                }
                 
-                if (hasAccess) {
+                if (hasAccess || hasEmergencyAccess) {
                     allRecords = allRecords.filter(r => r.patientPrincipal === ownerId);
                 } else {
                     allRecords = [];
