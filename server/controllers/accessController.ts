@@ -10,8 +10,8 @@ export function requestAccess(patientId: string, recordIds: string[], reason: st
     const doctor = requireRole('doctor');
     
     const patient = usersStorage.get(patientId);
-    if (!patient || patient.role !== 'patient') {
-        throw new CanisterError('VALIDATION_ERROR', "Target user is not a registered patient");
+    if (!patient) {
+        throw new CanisterError('VALIDATION_ERROR', "Target user is not registered");
     }
 
     const grantId = generateUuid();
@@ -33,11 +33,11 @@ export function requestAccess(patientId: string, recordIds: string[], reason: st
 }
 
 export function approveGrant(grantId: string, expiresAtStr: [string] | []): string {
-    const patient = requireRole('patient');
+    const caller = requireAuth();
     const grant = accessStorage.get(grantId);
     
     if (!grant) throw new CanisterError('VALIDATION_ERROR', "Grant not found");
-    if (grant.patientPrincipal !== patient) throw new CanisterError('VALIDATION_ERROR', "Only the patient can approve this grant");
+    if (grant.patientPrincipal !== caller) throw new CanisterError('VALIDATION_ERROR', "Only the patient can approve this grant");
     if (grant.status !== 'pending') throw new CanisterError('VALIDATION_ERROR', "Grant is not pending");
 
     let expiresAt = grant.expiresAt;
@@ -56,17 +56,17 @@ export function approveGrant(grantId: string, expiresAtStr: [string] | []): stri
     };
     
     accessStorage.insert(grantId, updatedGrant);
-    insertAudit(patient, "approve_grant", null, grant.granteePrincipal, "Access request approved");
+    insertAudit(caller, "approve_grant", null, grant.granteePrincipal, "Access request approved");
     
     return grantId;
 }
 
 export function denyGrant(grantId: string, reason: string): string {
-    const patient = requireRole('patient');
+    const caller = requireAuth();
     const grant = accessStorage.get(grantId);
     
     if (!grant) throw new CanisterError('VALIDATION_ERROR', "Grant not found");
-    if (grant.patientPrincipal !== patient) throw new CanisterError('VALIDATION_ERROR', "Only the patient can deny this grant");
+    if (grant.patientPrincipal !== caller) throw new CanisterError('VALIDATION_ERROR', "Only the patient can deny this grant");
     if (grant.status !== 'pending') throw new CanisterError('VALIDATION_ERROR', "Grant is not pending");
 
     const updatedGrant: AccessGrant = {
@@ -75,17 +75,17 @@ export function denyGrant(grantId: string, reason: string): string {
     };
     
     accessStorage.insert(grantId, updatedGrant);
-    insertAudit(patient, "deny_grant", null, grant.granteePrincipal, `Access request denied. Reason: ${reason}`);
+    insertAudit(caller, "deny_grant", null, grant.granteePrincipal, `Access request denied. Reason: ${reason}`);
     
     return grantId;
 }
 
 export function revokeGrant(grantId: string, reason: string): string {
-    const patient = requireRole('patient');
+    const caller = requireAuth();
     const grant = accessStorage.get(grantId);
     
     if (!grant) throw new CanisterError('VALIDATION_ERROR', "Grant not found");
-    if (grant.patientPrincipal !== patient) throw new CanisterError('VALIDATION_ERROR', "Only the patient can revoke this grant");
+    if (grant.patientPrincipal !== caller) throw new CanisterError('VALIDATION_ERROR', "Only the patient can revoke this grant");
     
     const updatedGrant: AccessGrant = {
         ...grant,
@@ -94,7 +94,7 @@ export function revokeGrant(grantId: string, reason: string): string {
     };
     
     accessStorage.insert(grantId, updatedGrant);
-    insertAudit(patient, "revoke_grant", null, grant.granteePrincipal, `Access revoked. Reason: ${reason}`);
+    insertAudit(caller, "revoke_grant", null, grant.granteePrincipal, `Access revoked. Reason: ${reason}`);
     
     return grantId;
 }

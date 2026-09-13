@@ -23,8 +23,8 @@ export function createRecord(patientPrincipal: string, title: string, descriptio
     }
     
     const patient = usersStorage.get(patientPrincipal);
-    if (!patient || patient.role !== 'patient') {
-        throw new CanisterError('VALIDATION_ERROR', "Target user is not a registered patient");
+    if (!patient) {
+        throw new CanisterError('VALIDATION_ERROR', "Target user is not registered");
     }
     
     const recordId = generateUuid();

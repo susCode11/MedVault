@@ -63209,8 +63209,8 @@ function createRecord(patientPrincipal, title2, description, recordType, ipfsCid
     throw new CanisterError("UNAUTHORIZED", "Forbidden: Patients can only upload their own records");
   }
   const patient = usersStorage.get(patientPrincipal);
-  if (!patient || patient.role !== "patient") {
-    throw new CanisterError("VALIDATION_ERROR", "Target user is not a registered patient");
+  if (!patient) {
+    throw new CanisterError("VALIDATION_ERROR", "Target user is not registered");
   }
   const recordId = generateUuid();
   const record = {
@@ -63303,8 +63303,8 @@ function deleteRecord(recordId) {
 function requestAccess(patientId, recordIds, reason, requestedDurationHours) {
   const doctor = requireRole("doctor");
   const patient = usersStorage.get(patientId);
-  if (!patient || patient.role !== "patient") {
-    throw new CanisterError("VALIDATION_ERROR", "Target user is not a registered patient");
+  if (!patient) {
+    throw new CanisterError("VALIDATION_ERROR", "Target user is not registered");
   }
   const grantId = generateUuid();
   const grant = {
@@ -63322,10 +63322,10 @@ function requestAccess(patientId, recordIds, reason, requestedDurationHours) {
   return grantId;
 }
 function approveGrant(grantId, expiresAtStr) {
-  const patient = requireRole("patient");
+  const caller = requireAuth();
   const grant = accessStorage.get(grantId);
   if (!grant) throw new CanisterError("VALIDATION_ERROR", "Grant not found");
-  if (grant.patientPrincipal !== patient) throw new CanisterError("VALIDATION_ERROR", "Only the patient can approve this grant");
+  if (grant.patientPrincipal !== caller) throw new CanisterError("VALIDATION_ERROR", "Only the patient can approve this grant");
   if (grant.status !== "pending") throw new CanisterError("VALIDATION_ERROR", "Grant is not pending");
   let expiresAt = grant.expiresAt;
   if (expiresAtStr.length > 0 && expiresAtStr[0] !== "") {
@@ -63341,35 +63341,35 @@ function approveGrant(grantId, expiresAtStr) {
     status: "approved"
   };
   accessStorage.insert(grantId, updatedGrant);
-  insertAudit(patient, "approve_grant", null, grant.granteePrincipal, "Access request approved");
+  insertAudit(caller, "approve_grant", null, grant.granteePrincipal, "Access request approved");
   return grantId;
 }
 function denyGrant(grantId, reason) {
-  const patient = requireRole("patient");
+  const caller = requireAuth();
   const grant = accessStorage.get(grantId);
   if (!grant) throw new CanisterError("VALIDATION_ERROR", "Grant not found");
-  if (grant.patientPrincipal !== patient) throw new CanisterError("VALIDATION_ERROR", "Only the patient can deny this grant");
+  if (grant.patientPrincipal !== caller) throw new CanisterError("VALIDATION_ERROR", "Only the patient can deny this grant");
   if (grant.status !== "pending") throw new CanisterError("VALIDATION_ERROR", "Grant is not pending");
   const updatedGrant = {
     ...grant,
     status: "denied"
   };
   accessStorage.insert(grantId, updatedGrant);
-  insertAudit(patient, "deny_grant", null, grant.granteePrincipal, `Access request denied. Reason: ${reason}`);
+  insertAudit(caller, "deny_grant", null, grant.granteePrincipal, `Access request denied. Reason: ${reason}`);
   return grantId;
 }
 function revokeGrant(grantId, reason) {
-  const patient = requireRole("patient");
+  const caller = requireAuth();
   const grant = accessStorage.get(grantId);
   if (!grant) throw new CanisterError("VALIDATION_ERROR", "Grant not found");
-  if (grant.patientPrincipal !== patient) throw new CanisterError("VALIDATION_ERROR", "Only the patient can revoke this grant");
+  if (grant.patientPrincipal !== caller) throw new CanisterError("VALIDATION_ERROR", "Only the patient can revoke this grant");
   const updatedGrant = {
     ...grant,
     revokedAt: [nowNanos()],
     status: "revoked"
   };
   accessStorage.insert(grantId, updatedGrant);
-  insertAudit(patient, "revoke_grant", null, grant.granteePrincipal, `Access revoked. Reason: ${reason}`);
+  insertAudit(caller, "revoke_grant", null, grant.granteePrincipal, `Access revoked. Reason: ${reason}`);
   return grantId;
 }
 function listMyGrants() {
@@ -63392,8 +63392,8 @@ function getConsentTimeline(grantId) {
 function triggerEmergencyAccess(patientId, reason, justification) {
   const doctor = requireRole("doctor");
   const patient = usersStorage.get(patientId);
-  if (!patient || patient.role !== "patient") {
-    throw new CanisterError("VALIDATION_ERROR", "Target user is not a registered patient");
+  if (!patient) {
+    throw new CanisterError("VALIDATION_ERROR", "Target user is not registered");
   }
   const eventId = generateUuid();
   const event = {
@@ -63441,25 +63441,25 @@ function listEmergencyEvents() {
 
 // server/controllers/reportController.ts
 function submitAbuseReport(emergencyEventId, reason) {
-  const patient = requireRole("patient");
+  const caller = requireAuth();
   const emergencyEvent = emergencyStorage.get(emergencyEventId);
   if (!emergencyEvent) {
     throw new CanisterError("VALIDATION_ERROR", "Emergency event not found");
   }
-  if (emergencyEvent.patientPrincipal !== patient) {
+  if (emergencyEvent.patientPrincipal !== caller) {
     throw new CanisterError("VALIDATION_ERROR", "Only the patient can report abuse for this event");
   }
   const reportId = generateUuid();
   const report = {
     id: reportId,
-    reporterPrincipal: patient,
+    reporterPrincipal: caller,
     reportedPrincipal: emergencyEvent.requesterPrincipal,
     emergencyEventId,
     reason,
     createdAt: nowNanos()
   };
   abuseReportsStorage.insert(reportId, report);
-  insertAudit(patient, "report_abuse", null, emergencyEvent.requesterPrincipal, `Reported abuse for emergency event ${emergencyEventId}`);
+  insertAudit(caller, "report_abuse", null, emergencyEvent.requesterPrincipal, `Reported abuse for emergency event ${emergencyEventId}`);
   return reportId;
 }
 function listAbuseReports() {

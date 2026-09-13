@@ -10,8 +10,8 @@ export function triggerEmergencyAccess(patientId: string, reason: string, justif
     const doctor = requireRole('doctor');
     
     const patient = usersStorage.get(patientId);
-    if (!patient || patient.role !== 'patient') {
-        throw new CanisterError('VALIDATION_ERROR', "Target user is not a registered patient");
+    if (!patient) {
+        throw new CanisterError('VALIDATION_ERROR', "Target user is not registered");
     }
     
     const eventId = generateUuid();
